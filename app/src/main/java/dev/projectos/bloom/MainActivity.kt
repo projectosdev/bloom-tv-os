@@ -114,8 +114,11 @@ private fun LauncherScreen() {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
     var showUpdates by remember { mutableStateOf(false) }
-    var animationsEnabled by remember { mutableStateOf(true) }
-    var reduceMotion by remember { mutableStateOf(false) }
+    val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
+    var animationsEnabled by remember { mutableStateOf(preferences.getBoolean("animations_enabled", true)) }
+    var reduceMotion by remember { mutableStateOf(preferences.getBoolean("reduce_motion", false)) }
+    val motionAllowed = animationsEnabled && !reduceMotion
+    val transitionDuration = if (motionAllowed) 260 else 0
 
     BackHandler(enabled = showSettings) {
         if (showUpdates) showUpdates = false else showSettings = false
@@ -142,8 +145,8 @@ private fun LauncherScreen() {
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
             visible = !showSettings,
-            enter = fadeIn(tween(220)) + slideInVertically(initialOffsetY = { it / 30 }, animationSpec = tween(260)),
-            exit = fadeOut(tween(160)) + slideOutVertically(targetOffsetY = { -it / 40 }, animationSpec = tween(180))
+            enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 30 else 0 }, animationSpec = tween(transitionDuration)),
+            exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) -it / 40 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
             Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 34.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -202,17 +205,23 @@ private fun LauncherScreen() {
         AnimatedVisibility(
             visible = showSettings,
             modifier = Modifier.fillMaxSize(),
-            enter = fadeIn(tween(220)) + slideInVertically(initialOffsetY = { it / 25 }, animationSpec = tween(280)),
-            exit = fadeOut(tween(160)) + slideOutVertically(targetOffsetY = { it / 35 }, animationSpec = tween(180))
+            enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 25 else 0 }, animationSpec = tween(transitionDuration)),
+            exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) it / 35 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
             if (showUpdates) {
                 UpdateScreen(onBack = { showUpdates = false })
             } else {
                 SettingsScreen(
                     animationsEnabled = animationsEnabled,
-                    onAnimationsChange = { animationsEnabled = it },
+                    onAnimationsChange = {
+                        animationsEnabled = it
+                        preferences.edit().putBoolean("animations_enabled", it).apply()
+                    },
                     reduceMotion = reduceMotion,
-                    onReduceMotionChange = { reduceMotion = it },
+                    onReduceMotionChange = {
+                        reduceMotion = it
+                        preferences.edit().putBoolean("reduce_motion", it).apply()
+                    },
                     onUpdatesClick = { showUpdates = true },
                     onBack = { showSettings = false }
                 )
