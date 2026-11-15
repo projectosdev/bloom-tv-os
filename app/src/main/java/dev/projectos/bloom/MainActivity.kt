@@ -1,6 +1,8 @@
 package dev.projectos.bloom
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -21,6 +23,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -41,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -446,6 +450,17 @@ private fun UpdateScreen(onBack: () -> Unit) {
 
 @Composable
 private fun AppTile(app: TvApp, animationsEnabled: Boolean, launch: () -> Unit) {
+    val context = LocalContext.current
+    val appIcon = remember(app.packageName) {
+        runCatching {
+            val drawable = context.packageManager.getApplicationIcon(app.packageName)
+            Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888).also { bitmap ->
+                val canvas = Canvas(bitmap)
+                drawable.setBounds(0, 0, canvas.width, canvas.height)
+                drawable.draw(canvas)
+            }
+        }.getOrNull()
+    }
     var focused by remember { mutableStateOf(false) }
     val targetScale = if (focused && animationsEnabled) 1.045f else 1f
     val scale by animateFloatAsState(
@@ -466,7 +481,20 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, launch: () -> Unit) 
         border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) Petal else Color.White.copy(alpha = 0.12f))
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Text(app.title.take(1), color = Petal, fontSize = 30.sp, fontWeight = FontWeight.Light)
+            if (appIcon != null) {
+                Image(
+                    bitmap = appIcon.asImageBitmap(),
+                    contentDescription = "${app.title} app icon",
+                    modifier = Modifier.size(48.dp)
+                )
+            } else {
+                Box(
+                    Modifier.size(48.dp).background(Color(0x334F405F), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(app.title.take(1).uppercase(), color = Petal, fontSize = 25.sp, fontWeight = FontWeight.Light)
+                }
+            }
             Column {
                 Text(app.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Text(app.detail, color = Ink.copy(alpha = 0.55f), fontSize = 11.sp)
