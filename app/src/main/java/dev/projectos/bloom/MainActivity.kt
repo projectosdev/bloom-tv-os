@@ -67,7 +67,9 @@ import java.util.Date
 import java.util.Locale
 
 private val Midnight = Color(0xFF050812)
-private val Petal = Color(0xFFB8C7FF)
+private val BloomAccent = mutableStateOf(Color(0xFFB8C7FF))
+private val BloomThemes = listOf(Color(0xFFB8C7FF), Color(0xFFFFB8D2), Color(0xFF9DE4D3), Color(0xFFFFD18C), Color(0xFFC7AEFF))
+private val BloomThemeNames = listOf("Glacier", "Rose", "Mint", "Sunset", "Lilac")
 private val Ink = Color(0xFFE9ECF6)
 private val Glass = Color(0x20FFFFFF)
 
@@ -273,7 +275,7 @@ private fun BootScreen() {
                         .scale(scale)
                         .rotate(angle)
                         .background(
-                            Brush.verticalGradient(listOf(Color(0xFFFFEAF1), Petal, Color(0xFFB77CA8))),
+                            Brush.verticalGradient(listOf(Color(0xFFFFEAF1), BloomAccent.value, Color(0xFFB77CA8))),
                             RoundedCornerShape(50)
                         )
                 )
@@ -286,13 +288,13 @@ private fun BootScreen() {
         }
         Spacer(Modifier.height(24.dp))
         Text("bloom", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Light, letterSpacing = 5.sp)
-        Text("TV OS LITE", color = Petal, fontSize = 12.sp, letterSpacing = 6.sp)
+        Text("TV OS LITE", color = BloomAccent.value, fontSize = 12.sp, letterSpacing = 6.sp)
         Spacer(Modifier.height(14.dp))
         Text("A lighter way to watch.", color = Ink.copy(alpha = 0.76f), fontSize = 14.sp)
         Spacer(Modifier.height(34.dp))
         LinearProgressIndicator(
             modifier = Modifier.width(112.dp).height(3.dp),
-            color = Petal,
+            color = BloomAccent.value,
             trackColor = Color.White.copy(alpha = 0.12f)
         )
         Spacer(Modifier.height(12.dp))
@@ -311,6 +313,9 @@ private fun LauncherScreen() {
     var showControlCentre by remember { mutableStateOf(false) }
     var showBloomSearch by remember { mutableStateOf(false) }
     var showAmbient by remember { mutableStateOf(false) }
+    var showProfiles by remember { mutableStateOf(false) }
+    var themeIndex by remember { mutableIntStateOf(preferences.getInt("theme_index", 0).coerceIn(0, BloomThemes.lastIndex)) }
+    BloomAccent.value = BloomThemes[themeIndex]
     val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     var profileName by remember { mutableStateOf(preferences.getString("profile_name", "").orEmpty()) }
     var showSignUp by remember { mutableStateOf(!preferences.getBoolean("profile_setup_complete", false)) }
@@ -331,12 +336,13 @@ private fun LauncherScreen() {
     val motionAllowed = animationsEnabled && !reduceMotion
     val transitionDuration = if (motionAllowed) 260 else 0
 
-    BackHandler(enabled = showSettings || showAppLibrary || showStore || showSignUp || showControlCentre || showBloomSearch || showAmbient) {
+    BackHandler(enabled = showSettings || showAppLibrary || showStore || showSignUp || showControlCentre || showBloomSearch || showAmbient || showProfiles) {
         when {
             showSignUp -> showSignUp = false
             showControlCentre -> showControlCentre = false
             showBloomSearch -> showBloomSearch = false
             showAmbient -> showAmbient = false
+            showProfiles -> showProfiles = false
             showUpdates -> showUpdates = false
             showSystemInfo -> showSystemInfo = false
             showSettings -> showSettings = false
@@ -358,7 +364,7 @@ private fun LauncherScreen() {
 
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
-            visible = !showSettings && !showAppLibrary && !showStore && !showSignUp && !showControlCentre && !showBloomSearch && !showAmbient,
+            visible = !showSettings && !showAppLibrary && !showStore && !showSignUp && !showControlCentre && !showBloomSearch && !showAmbient && !showProfiles,
             enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 30 else 0 }, animationSpec = tween(transitionDuration)),
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) -it / 40 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
@@ -366,7 +372,7 @@ private fun LauncherScreen() {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("bloom", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
-                        Text("TV OS LITE", color = Petal, fontSize = 10.sp, letterSpacing = 3.sp)
+                        Text("TV OS LITE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 3.sp)
                     }
                     Row(
                         Modifier.background(Glass, RoundedCornerShape(30.dp)).padding(horizontal = 15.dp, vertical = 10.dp),
@@ -400,7 +406,7 @@ private fun LauncherScreen() {
                     }
                     Spacer(Modifier.width(10.dp))
                     Surface(
-                        onClick = { showSignUp = true },
+                        onClick = { showProfiles = true },
                         color = Color(0x334F6A9A),
                         shape = RoundedCornerShape(30.dp),
                         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
@@ -455,7 +461,7 @@ private fun LauncherScreen() {
                     ) {
                         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text("WELCOME TO BLOOM", color = Petal, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                                Text("WELCOME TO BLOOM", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(9.dp))
                                 Text("Make tonight yours.", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
                                 Spacer(Modifier.height(5.dp))
@@ -478,7 +484,7 @@ private fun LauncherScreen() {
                 }
                 Spacer(Modifier.height(13.dp))
                 if (showSystemCards) {
-                    Text("AT A GLANCE", color = Petal, fontSize = 9.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                    Text("AT A GLANCE", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         SystemMetricCard("APP LIBRARY", installed.size.toString(), "Available on this device", Modifier.weight(1f))
@@ -488,15 +494,15 @@ private fun LauncherScreen() {
                     Spacer(Modifier.height(13.dp))
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("YOUR APPS", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                    Text("YOUR APPS", color = BloomAccent.value, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(18.dp))
                     TextButton(onClick = { installed = discoverTvApps(context) }) {
                         Text("Refresh apps", color = Ink.copy(alpha = 0.75f), fontSize = 12.sp)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    TextButton(onClick = { showBloomSearch = true }) { Text("⌕  Search Bloom", color = Petal) }
-                    TextButton(onClick = { showAmbient = true }) { Text("✦  Bloom Ambient", color = Petal) }
+                    TextButton(onClick = { showBloomSearch = true }) { Text("⌕  Search Bloom", color = BloomAccent.value) }
+                    TextButton(onClick = { showAmbient = true }) { Text("✦  Bloom Ambient", color = BloomAccent.value) }
                 }
                 Spacer(Modifier.height(8.dp))
                 if (installed.isEmpty()) {
@@ -578,7 +584,7 @@ private fun LauncherScreen() {
             BloomSearchScreen(apps = installed, onBack = { showBloomSearch = false }, onLaunch = { app -> showBloomSearch = false; runCatching { launchBloomApp(context, app) } }, onSettings = { showBloomSearch = false; showSettings = true })
         }
 
-        AnimatedVisibility(visible = showAmbient, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(350)), exit = fadeOut(tween(220))) {
+        AnimatedVisibility(visible = showProfiles, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {\n            BloomProfilesScreen(currentName = profileName, onSelect = { name -> profileName = name; preferences.edit().putString("profile_name", name).putBoolean("profile_setup_complete", true).apply(); showProfiles = false }, onBack = { showProfiles = false })\n        }\n\n        AnimatedVisibility(visible = showAmbient, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(350)), exit = fadeOut(tween(220))) {
             BloomAmbientScreen(onExit = { showAmbient = false })
         }
 
@@ -608,13 +614,13 @@ private fun LauncherScreen() {
                         showSystemCards = it
                         preferences.edit().putBoolean("show_system_cards", it).apply()
                     },
-                    compactTiles = compactTiles,
+                    themeIndex = themeIndex,\n                    onThemeChange = { index -> themeIndex = index.coerceIn(BloomThemes.indices); BloomAccent.value = BloomThemes[themeIndex]; preferences.edit().putInt("theme_index", themeIndex).apply() },\n                    compactTiles = compactTiles,
                     onCompactTilesChange = {
                         compactTiles = it
                         preferences.edit().putBoolean("compact_tiles", it).apply()
                     },
                     onUpdatesClick = { showUpdates = true },
-                    onProfileClick = { showSettings = false; showSignUp = true },
+                    onProfileClick = { showSettings = false; showProfiles = true },
                     onSystemInfoClick = { showSystemInfo = true },
                     onBack = { showSettings = false }
                 )
@@ -636,7 +642,7 @@ private fun LauncherScreen() {
                     }
                     if (updateMessage.isNotBlank()) {
                         Spacer(Modifier.height(10.dp))
-                        Text(updateMessage, style = MaterialTheme.typography.bodySmall, color = Petal)
+                        Text(updateMessage, style = MaterialTheme.typography.bodySmall, color = BloomAccent.value)
                     }
                 }
             },
@@ -669,7 +675,7 @@ private fun SettingsScreen(
     showSystemCards: Boolean,
     onShowSystemCardsChange: (Boolean) -> Unit,
     compactTiles: Boolean,
-    onCompactTilesChange: (Boolean) -> Unit,
+    onCompactTilesChange: (Boolean) -> Unit,\n    themeIndex: Int,\n    onThemeChange: (Int) -> Unit,
     onUpdatesClick: () -> Unit,
     onProfileClick: () -> Unit,
     onSystemInfoClick: () -> Unit,
@@ -689,7 +695,7 @@ private fun SettingsScreen(
         Spacer(Modifier.height(24.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(Modifier.weight(1.15f)) {
-                Text("SYSTEM", color = Petal, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                Text("SYSTEM", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
                 SettingsRow("Your Profile", "Personalise your Bloom experience", "↗", onProfileClick)
                 Spacer(Modifier.height(12.dp))
@@ -698,7 +704,7 @@ private fun SettingsScreen(
                 SettingsRow("About Bloom", "Version, device and system information", "↗", onSystemInfoClick)
             }
             Column(Modifier.weight(1f)) {
-                Text("EXPERIENCE", color = Petal, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                Text("EXPERIENCE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
                 SettingsSwitchRow("Bloom Motion", "Expressive transitions and focus effects.", animationsEnabled, onAnimationsChange)
                 Spacer(Modifier.height(12.dp))
@@ -706,7 +712,7 @@ private fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
                 SettingsSwitchRow("System overview", "Show live device and profile cards on Home.", showSystemCards, onShowSystemCardsChange)
                 Spacer(Modifier.height(12.dp))
-                SettingsSwitchRow("Compact app tiles", "Fit more apps into the home carousel.", compactTiles, onCompactTilesChange)
+                SettingsSwitchRow("Compact app tiles", "Fit more apps into the home carousel.", compactTiles, onCompactTilesChange)\n                Spacer(Modifier.height(12.dp))\n                ThemePickerRow(selected = themeIndex, onSelect = onThemeChange)
             }
         }
         Spacer(Modifier.weight(1f))
@@ -727,7 +733,7 @@ private fun SettingsRow(title: String, subtitle: String, trailing: String, onCli
         modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
         color = background,
         shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) Petal else Color.White.copy(alpha = 0.12f))
+        border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) BloomAccent.value else Color.White.copy(alpha = 0.12f))
     ) {
         Row(Modifier.padding(horizontal = 20.dp, vertical = 17.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -735,7 +741,7 @@ private fun SettingsRow(title: String, subtitle: String, trailing: String, onCli
                 Spacer(Modifier.height(4.dp))
                 Text(subtitle, color = Ink.copy(alpha = 0.62f), fontSize = 12.sp)
             }
-            Text(trailing, color = Petal, fontSize = 28.sp)
+            Text(trailing, color = BloomAccent.value, fontSize = 28.sp)
         }
     }
 }
@@ -800,7 +806,7 @@ private fun UpdateScreen(
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
         ) {
             Column(Modifier.padding(26.dp)) {
-                Text("BLOOM SOFTWARE", color = Petal, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                Text("BLOOM SOFTWARE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
                 Text("Bloom ${update?.versionName ?: installedVersion}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Light)
                 Spacer(Modifier.height(6.dp))
@@ -813,7 +819,7 @@ private fun UpdateScreen(
                     }
                     if (update.notes.isNotBlank()) {
                         Spacer(Modifier.height(18.dp))
-                        Text("WHAT'S NEW", color = Petal, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                        Text("WHAT'S NEW", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         Text(update.notes.take(1000), color = Ink.copy(alpha = 0.76f), fontSize = 13.sp)
                     }
@@ -827,7 +833,7 @@ private fun UpdateScreen(
                 }
                 if (message.isNotBlank()) {
                     Spacer(Modifier.height(14.dp))
-                    Text(message, color = Petal, fontSize = 12.sp)
+                    Text(message, color = BloomAccent.value, fontSize = 12.sp)
                 }
             }
         }
@@ -898,7 +904,7 @@ private fun BloomStoreScreen(onBack: () -> Unit) {
                 Text("Bloom Store", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
                 Text("A hand-picked collection for your screen.", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
             }
-            Text("BLOOM MARKETPLACE", color = Petal.copy(alpha = 0.8f), fontSize = 9.sp, letterSpacing = 2.sp)
+            Text("BLOOM MARKETPLACE", color = BloomAccent.value.copy(alpha = 0.8f), fontSize = 9.sp, letterSpacing = 2.sp)
         }
         Spacer(Modifier.height(17.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -913,7 +919,7 @@ private fun BloomStoreScreen(onBack: () -> Unit) {
                     focusedContainerColor = Glass, unfocusedContainerColor = Glass,
                     focusedTextColor = Color.White, unfocusedTextColor = Color.White,
                     focusedPlaceholderColor = Ink.copy(alpha = 0.5f), unfocusedPlaceholderColor = Ink.copy(alpha = 0.5f),
-                    focusedIndicatorColor = Petal, unfocusedIndicatorColor = Color.Transparent, cursorColor = Petal
+                    focusedIndicatorColor = BloomAccent.value, unfocusedIndicatorColor = Color.Transparent, cursorColor = BloomAccent.value
                 )
             )
             Text("${bloomStoreApps.size} CURATED APPS", color = Ink.copy(alpha = 0.48f), fontSize = 9.sp, letterSpacing = 1.4.sp)
@@ -929,7 +935,7 @@ private fun BloomStoreScreen(onBack: () -> Unit) {
                 Brush.horizontalGradient(listOf(Color(0x665F4B83), Color(0x332B4966), Color(0x224B6680)))
             ).padding(horizontal = 24.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("THE BLOOM EDIT", color = Petal, fontSize = 9.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                    Text("THE BLOOM EDIT", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(5.dp))
                     Text("Find your next favourite.", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Light)
                     Text("Discover apps selected for the Bloom experience.", color = Ink.copy(alpha = 0.7f), fontSize = 11.sp)
@@ -948,7 +954,7 @@ private fun BloomStoreScreen(onBack: () -> Unit) {
                 Surface(onClick = { selectedCategory = category },
                     color = if (active) Color(0xFFB8C7FF) else Glass,
                     shape = RoundedCornerShape(30.dp),
-                    border = BorderStroke(1.dp, if (active) Petal else Color.White.copy(alpha = 0.1f))) {
+                    border = BorderStroke(1.dp, if (active) BloomAccent.value else Color.White.copy(alpha = 0.1f))) {
                     Text(category, color = if (active) Color(0xFF111526) else Ink,
                         fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(horizontal = 15.dp, vertical = 9.dp))
@@ -958,7 +964,7 @@ private fun BloomStoreScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(if (selectedCategory == "All") "EXPLORE THE STORE" else selectedCategory.uppercase(),
-                color = Petal, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(10.dp))
             Text("${visibleApps.size} results", color = Ink.copy(alpha = 0.42f), fontSize = 10.sp)
         }
@@ -978,19 +984,19 @@ private fun BloomStoreScreen(onBack: () -> Unit) {
                             Box(Modifier.size(46.dp).background(
                                 Brush.linearGradient(listOf(Color(0x665E6795), Color(0x443E345C))),
                                 RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                                Text(app.name.take(1), color = Petal, fontSize = 23.sp, fontWeight = FontWeight.Light)
+                                Text(app.name.take(1), color = BloomAccent.value, fontSize = 23.sp, fontWeight = FontWeight.Light)
                             }
                             Spacer(Modifier.width(14.dp))
                             Column(Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(app.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                                     Spacer(Modifier.width(9.dp))
-                                    Text(app.badge, color = Petal.copy(alpha = 0.8f), fontSize = 8.sp, letterSpacing = 1.sp)
+                                    Text(app.badge, color = BloomAccent.value.copy(alpha = 0.8f), fontSize = 8.sp, letterSpacing = 1.sp)
                                 }
                                 Spacer(Modifier.height(3.dp))
                                 Text(app.description, color = Ink.copy(alpha = 0.56f), fontSize = 10.sp, maxLines = 1)
                             }
-                            Text("Details  ›", color = Petal, fontSize = 11.sp)
+                            Text("Details  ›", color = BloomAccent.value, fontSize = 11.sp)
                         }
                     }
                 }
@@ -1056,7 +1062,7 @@ private fun AppLibraryScreen(
                 Text("App library", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
                 Text("${apps.size} installed apps", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
             }
-            TextButton(onClick = onRefresh) { Text("Refresh", color = Petal) }
+            TextButton(onClick = onRefresh) { Text("Refresh", color = BloomAccent.value) }
         }
         Spacer(Modifier.height(22.dp))
         TextField(
@@ -1072,9 +1078,9 @@ private fun AppLibraryScreen(
                 unfocusedTextColor = Color.White,
                 focusedPlaceholderColor = Ink.copy(alpha = 0.5f),
                 unfocusedPlaceholderColor = Ink.copy(alpha = 0.5f),
-                focusedIndicatorColor = Petal,
+                focusedIndicatorColor = BloomAccent.value,
                 unfocusedIndicatorColor = Color.Transparent,
-                cursorColor = Petal
+                cursorColor = BloomAccent.value
             )
         )
         Spacer(Modifier.height(16.dp))
@@ -1098,12 +1104,12 @@ private fun AppLibraryScreen(
                             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(app.title.take(1).uppercase(), color = Petal, fontSize = 23.sp, modifier = Modifier.width(42.dp))
+                            Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 23.sp, modifier = Modifier.width(42.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(app.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                                 Text(app.packageName, color = Ink.copy(alpha = 0.48f), fontSize = 10.sp)
                             }
-                            Text("Open  ›", color = Petal, fontSize = 12.sp)
+                            Text("Open  ›", color = BloomAccent.value, fontSize = 12.sp)
                         }
                     }
                 }
@@ -1142,7 +1148,7 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, compact: Boolean, la
         modifier = Modifier.width(if (compact) 174.dp else 210.dp).height(if (compact) 116.dp else 146.dp).scale(scale).onFocusChanged { focused = it.isFocused },
         color = tileColor,
         shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) Petal else Color.White.copy(alpha = 0.12f))
+        border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) BloomAccent.value else Color.White.copy(alpha = 0.12f))
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
             if (appIcon != null) {
@@ -1156,7 +1162,7 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, compact: Boolean, la
                     Modifier.size(48.dp).background(Color(0x334F405F), RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(app.title.take(1).uppercase(), color = Petal, fontSize = 25.sp, fontWeight = FontWeight.Light)
+                    Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 25.sp, fontWeight = FontWeight.Light)
                 }
             }
             Column {
@@ -1187,7 +1193,7 @@ private fun BloomSignUpScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text("B L O O M   /   YOUR SPACE", color = Petal, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                Text("B L O O M   /   YOUR SPACE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(18.dp))
                 Text(
                     if (initialName.isBlank()) "A screen that\nfeels like yours." else "Make Bloom\nyour own.",
@@ -1206,7 +1212,7 @@ private fun BloomSignUpScreen(
                 ).forEach { item ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 17.dp)) {
                         Box(Modifier.size(34.dp).background(Color(0x334F638D), RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
-                            Text(item.first, color = Petal, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(item.first, color = BloomAccent.value, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.width(12.dp))
                         Column {
@@ -1242,7 +1248,7 @@ private fun BloomSignUpScreen(
                         }
                         Spacer(Modifier.width(12.dp))
                         Column {
-                            Text("BLOOM PROFILE", color = Petal, fontSize = 9.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                            Text("BLOOM PROFILE", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
                             Text("Your setup", color = Ink.copy(alpha = 0.6f), fontSize = 11.sp)
                         }
                     }
@@ -1276,7 +1282,7 @@ private fun BloomSignUpScreen(
                                 Text(cleanName.ifBlank { "Your profile" }, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                                 Text("BLOOM MEMBER  •  THIS DEVICE", color = Ink.copy(alpha = 0.48f), fontSize = 8.sp, letterSpacing = 1.sp)
                             }
-                            Text("PREVIEW", color = Petal.copy(alpha = 0.8f), fontSize = 8.sp, letterSpacing = 1.sp)
+                            Text("PREVIEW", color = BloomAccent.value.copy(alpha = 0.8f), fontSize = 8.sp, letterSpacing = 1.sp)
                         }
                     }
                     Spacer(Modifier.height(18.dp))
@@ -1299,9 +1305,9 @@ private fun BloomSignUpScreen(
                         shape = RoundedCornerShape(15.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White, unfocusedTextColor = Color.White,
-                            focusedBorderColor = Petal, unfocusedBorderColor = Color.White.copy(alpha = 0.22f),
-                            focusedLabelColor = Petal, unfocusedLabelColor = Ink.copy(alpha = 0.58f),
-                            cursorColor = Petal, focusedSupportingTextColor = Ink.copy(alpha = 0.55f),
+                            focusedBorderColor = BloomAccent.value, unfocusedBorderColor = Color.White.copy(alpha = 0.22f),
+                            focusedLabelColor = BloomAccent.value, unfocusedLabelColor = Ink.copy(alpha = 0.58f),
+                            cursorColor = BloomAccent.value, focusedSupportingTextColor = Ink.copy(alpha = 0.55f),
                             unfocusedSupportingTextColor = Ink.copy(alpha = 0.45f)
                         )
                     )
@@ -1351,7 +1357,7 @@ private fun SystemMetricCard(title: String, value: String, detail: String, modif
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
     ) {
         Column(Modifier.padding(horizontal = 13.dp, vertical = 9.dp), verticalArrangement = Arrangement.Center) {
-            Text(title, color = Petal.copy(alpha = 0.86f), fontSize = 8.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = BloomAccent.value.copy(alpha = 0.86f), fontSize = 8.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(3.dp))
             Text(value, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Text(detail, color = Ink.copy(alpha = 0.48f), fontSize = 9.sp, maxLines = 1)
@@ -1377,10 +1383,10 @@ private fun BloomControlCentre(
             Column(Modifier.padding(28.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("BLOOM CONTROL CENTRE", color = Petal, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                        Text("BLOOM CONTROL CENTRE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
                         Text("Your quick settings", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
                     }
-                    TextButton(onClick = onClose) { Text("Done  ✕", color = Petal) }
+                    TextButton(onClick = onClose) { Text("Done  ✕", color = BloomAccent.value) }
                 }
                 Spacer(Modifier.height(20.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1420,29 +1426,29 @@ private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (
     val matches = remember(apps, query) { apps.filter { it.title.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) } }
     Column(Modifier.fillMaxSize().background(Color(0xF8070B16)).padding(horizontal = 54.dp, vertical = 30.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← Back", color = Petal) }
+            TextButton(onClick = onBack) { Text("← Back", color = BloomAccent.value) }
             Spacer(Modifier.width(14.dp))
             Text("Bloom Search", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light)
         }
         Spacer(Modifier.height(18.dp))
-        OutlinedTextField(value = query, onValueChange = { query = it.take(60) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search apps on this device") }, placeholder = { Text("Try Netflix, Spotify or ChatGPT") }, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Petal, unfocusedBorderColor = Color.White.copy(alpha = 0.2f), focusedLabelColor = Petal, unfocusedLabelColor = Ink.copy(alpha = 0.6f), cursorColor = Petal))
+        OutlinedTextField(value = query, onValueChange = { query = it.take(60) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search apps on this device") }, placeholder = { Text("Try Netflix, Spotify or ChatGPT") }, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = BloomAccent.value, unfocusedBorderColor = Color.White.copy(alpha = 0.2f), focusedLabelColor = BloomAccent.value, unfocusedLabelColor = Ink.copy(alpha = 0.6f), cursorColor = BloomAccent.value))
         Spacer(Modifier.height(14.dp))
-        Text("INSTALLED APPS  •  ${matches.size} RESULTS", color = Petal, fontSize = 9.sp, letterSpacing = 2.sp)
+        Text("INSTALLED APPS  •  ${matches.size} RESULTS", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp)
         Spacer(Modifier.height(10.dp))
         if (matches.isEmpty()) Text(if (query.isBlank()) "Start typing to find an installed app." else "No installed apps match that search.", color = Ink.copy(alpha = 0.65f))
         else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(matches) { app ->
                 Surface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth(), color = Glass, shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(app.title.take(1).uppercase(), color = Petal, fontSize = 22.sp, modifier = Modifier.width(40.dp))
+                        Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 22.sp, modifier = Modifier.width(40.dp))
                         Column(Modifier.weight(1f)) { Text(app.title, color = Color.White, fontWeight = FontWeight.SemiBold); Text(app.packageName, color = Ink.copy(alpha = 0.45f), fontSize = 10.sp) }
-                        Text("Open  ›", color = Petal, fontSize = 12.sp)
+                        Text("Open  ›", color = BloomAccent.value, fontSize = 12.sp)
                     }
                 }
             }
         }
         Spacer(Modifier.weight(1f))
-        TextButton(onClick = onSettings) { Text("Search settings instead  →", color = Petal) }
+        TextButton(onClick = onSettings) { Text("Search settings instead  →", color = BloomAccent.value) }
     }
 }
 
@@ -1460,8 +1466,72 @@ private fun BloomAmbientScreen(onExit: () -> Unit) {
             Text("bloom", color = Color.White.copy(alpha = 0.8f), fontSize = 20.sp, letterSpacing = 8.sp, fontWeight = FontWeight.Light)
             Spacer(Modifier.height(12.dp))
             Text(clock, color = Color.White, fontSize = 104.sp, fontWeight = FontWeight.ExtraLight, letterSpacing = (-4).sp)
-            Text(SimpleDateFormat("EEEE  •  d MMMM", Locale.getDefault()).format(Date()).uppercase(), color = Petal.copy(alpha = 0.78f), fontSize = 11.sp, letterSpacing = 3.sp)
+            Text(SimpleDateFormat("EEEE  •  d MMMM", Locale.getDefault()).format(Date()).uppercase(), color = BloomAccent.value.copy(alpha = 0.78f), fontSize = 11.sp, letterSpacing = 3.sp)
         }
         TextButton(onClick = onExit, modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp)) { Text("Exit ambient  ✕", color = Ink.copy(alpha = 0.75f)) }
+    }
+}
+
+
+@Composable
+private fun ThemePickerRow(selected: Int, onSelect: (Int) -> Unit) {
+    Surface(Modifier.fillMaxWidth(), color = Glass, shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))) {
+        Column(Modifier.padding(15.dp)) {
+            Text("Bloom Themes", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text("Choose an accent colour", color = Ink.copy(alpha = 0.55f), fontSize = 10.sp)
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                BloomThemes.forEachIndexed { index, color ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Surface(onClick = { onSelect(index) }, modifier = Modifier.size(30.dp), shape = CircleShape, color = color, border = BorderStroke(if (selected == index) 3.dp else 1.dp, if (selected == index) Color.White else Color.White.copy(alpha = 0.3f))) {}
+                        Text(BloomThemeNames[index], color = Ink.copy(alpha = 0.55f), fontSize = 8.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BloomProfilesScreen(currentName: String, onSelect: (String) -> Unit, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
+    val profileSet = remember { mutableStateListOf<String>().also { list ->
+        list.addAll((prefs.getStringSet("profile_names", emptySet()) ?: emptySet()).toList())
+        if (currentName.isNotBlank() && !list.contains(currentName)) list.add(currentName)
+    } }
+    var newName by remember { mutableStateOf("") }
+    Column(Modifier.fillMaxSize().background(Color(0xF8070B16)).padding(horizontal = 54.dp, vertical = 30.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack) { Text("← Back", color = BloomAccent.value) }
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text("Who's watching?", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light)
+                Text("Choose a local Bloom profile.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
+            }
+        }
+        Spacer(Modifier.height(22.dp))
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(profileSet.distinct()) { profile ->
+                Surface(onClick = { onSelect(profile) }, modifier = Modifier.fillMaxWidth(), color = if (profile == currentName) Color(0x443E5278) else Glass, shape = RoundedCornerShape(18.dp), border = BorderStroke(if (profile == currentName) 2.dp else 1.dp, if (profile == currentName) BloomAccent.value else Color.White.copy(alpha = 0.12f))) {
+                    Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(44.dp).background(BloomAccent.value, CircleShape), contentAlignment = Alignment.Center) { Text(profile.take(1).uppercase(), color = Midnight, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+                        Spacer(Modifier.width(14.dp))
+                        Column(Modifier.weight(1f)) { Text(profile, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold); Text(if (profile == currentName) "CURRENT PROFILE" else "LOCAL PROFILE", color = Ink.copy(alpha = 0.5f), fontSize = 9.sp) }
+                        Text("Select  ›", color = BloomAccent.value)
+                    }
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(value = newName, onValueChange = { newName = it.filter { c -> !c.isISOControl() }.take(32) }, modifier = Modifier.weight(1f), singleLine = true, label = { Text("New profile name") })
+            Button(enabled = newName.trim().length >= 2, onClick = {
+                val name = newName.trim()
+                if (!profileSet.contains(name)) profileSet.add(name)
+                prefs.edit().putStringSet("profile_names", profileSet.toSet()).apply()
+                onSelect(name)
+            }, colors = ButtonDefaults.buttonColors(containerColor = BloomAccent.value, contentColor = Midnight)) { Text("Create") }
+        }
+        Text("Profiles are stored locally. They do not create separate Android accounts or lock apps.", color = Ink.copy(alpha = 0.42f), fontSize = 10.sp)
     }
 }
