@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class TvApp(val title: String, val packageName: String, val activityName: String, val detail: String)
+private data class TvApp(val title: String, val packageName: String, val activityName: String, val launcherCategory: String, val detail: String)
 
 private fun discoverTvApps(context: android.content.Context): List<TvApp> {
     val packageManager = context.packageManager
@@ -80,7 +80,7 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
             if (packageName == context.packageName || discovered.containsKey(packageName)) return@forEach
             val label = resolveInfo.loadLabel(packageManager)?.toString()?.trim().orEmpty()
             if (label.isNotEmpty()) {
-                discovered[packageName] = TvApp(label, packageName, activityInfo.name, "Installed app")
+                discovered[packageName] = TvApp(label, packageName, activityInfo.name, category, "Installed app")
             }
         }
     }
@@ -205,7 +205,9 @@ private fun LauncherScreen() {
                         items(installed) { app ->
                             AppTile(app, animationsEnabled && !reduceMotion) {
                                 runCatching {
-                                    val launchIntent = Intent().setClassName(app.packageName, app.activityName)
+                                    val launchIntent = Intent(Intent.ACTION_MAIN)
+                                        .addCategory(app.launcherCategory)
+                                        .setClassName(app.packageName, app.activityName)
                                     context.startActivity(launchIntent)
                                 }
                             }
