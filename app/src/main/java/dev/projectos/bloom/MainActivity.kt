@@ -332,6 +332,7 @@ private fun LauncherScreen() {
     var animationsEnabled by remember { mutableStateOf(preferences.getBoolean("animations_enabled", true)) }
     var reduceMotion by remember { mutableStateOf(preferences.getBoolean("reduce_motion", false)) }
     var showSystemCards by remember { mutableStateOf(preferences.getBoolean("show_system_cards", true)) }
+    var showWelcomePanel by remember { mutableStateOf(preferences.getBoolean("show_welcome_panel", true)) }
     var compactTiles by remember { mutableStateOf(preferences.getBoolean("compact_tiles", false)) }
     val motionAllowed = animationsEnabled && !reduceMotion
     val transitionDuration = if (motionAllowed) 260 else 0
@@ -446,7 +447,7 @@ private fun LauncherScreen() {
                 Text(if (profileName.isBlank()) "Your screen. Reimagined." else "Welcome back, $profileName.", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
                 Text("A little more atmosphere. A lot more to explore.", color = Ink.copy(alpha = 0.72f), fontSize = 14.sp)
                 Spacer(Modifier.height(18.dp))
-                Surface(
+                if (showWelcomePanel) Surface(
                     modifier = Modifier.fillMaxWidth().height(158.dp),
                     color = Color(0x443D4A70),
                     shape = RoundedCornerShape(26.dp),
@@ -615,6 +616,8 @@ private fun LauncherScreen() {
                         preferences.edit().putBoolean("reduce_motion", it).apply()
                     },
                     showSystemCards = showSystemCards,
+                    showWelcomePanel = showWelcomePanel,
+                    onShowWelcomePanelChange = { showWelcomePanel = it; preferences.edit().putBoolean("show_welcome_panel", it).apply() },
                     onShowSystemCardsChange = {
                         showSystemCards = it
                         preferences.edit().putBoolean("show_system_cards", it).apply()
@@ -681,6 +684,8 @@ private fun SettingsScreen(
     onReduceMotionChange: (Boolean) -> Unit,
     showSystemCards: Boolean,
     onShowSystemCardsChange: (Boolean) -> Unit,
+    showWelcomePanel: Boolean,
+    onShowWelcomePanelChange: (Boolean) -> Unit,
     compactTiles: Boolean,
     onCompactTilesChange: (Boolean) -> Unit,
     themeIndex: Int,
@@ -719,7 +724,9 @@ private fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
                 SettingsSwitchRow("Reduce Motion", "Tone down movement and visual effects.", reduceMotion, onReduceMotionChange)
                 Spacer(Modifier.height(12.dp))
-                SettingsSwitchRow("System overview", "Show live device and profile cards on Home.", showSystemCards, onShowSystemCardsChange)
+                SettingsSwitchRow("System overview", "Show device and profile cards on Home.", showSystemCards, onShowSystemCardsChange)
+                Spacer(Modifier.height(12.dp))
+                SettingsSwitchRow("Welcome widget", "Show or hide the featured Bloom panel.", showWelcomePanel, onShowWelcomePanelChange)
                 Spacer(Modifier.height(12.dp))
                 SettingsSwitchRow("Compact app tiles", "Fit more apps into the home carousel.", compactTiles, onCompactTilesChange)
                 Spacer(Modifier.height(12.dp))
