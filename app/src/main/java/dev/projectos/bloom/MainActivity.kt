@@ -1138,93 +1138,172 @@ private fun BloomSignUpScreen(
     onSkip: () -> Unit
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
+    var focused by remember { mutableStateOf(false) }
     val cleanName = name.trim()
-    Box(Modifier.fillMaxSize().padding(34.dp), contentAlignment = Alignment.Center) {
-        Surface(
-            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(),
-            color = Color(0xCC111827),
-            shape = RoundedCornerShape(30.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.17f))
+    val initial = cleanName.firstOrNull()?.uppercaseChar()?.toString() ?: "B"
+    val validName = cleanName.length in 2..32
+
+    Box(Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 20.dp), contentAlignment = Alignment.Center) {
+        Row(
+            Modifier.fillMaxWidth().widthIn(max = 1040.dp),
+            horizontalArrangement = Arrangement.spacedBy(28.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                Modifier.padding(horizontal = 38.dp, vertical = 34.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    Modifier.size(66.dp).background(
-                        Brush.linearGradient(listOf(Color(0xFF9CB8FF), Color(0xFF8B70B7))),
-                        RoundedCornerShape(22.dp)
-                    ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("b", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Light)
-                }
-                Spacer(Modifier.height(22.dp))
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text("B L O O M   /   YOUR SPACE", color = Petal, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(18.dp))
                 Text(
-                    if (initialName.isBlank()) "Welcome to Bloom" else "Your Bloom profile",
-                    color = Color.White,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Light
+                    if (initialName.isBlank()) "A screen that\nfeels like yours." else "Make Bloom\nyour own.",
+                    color = Color.White, fontSize = 43.sp, lineHeight = 49.sp, fontWeight = FontWeight.Light
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(13.dp))
                 Text(
-                    "Make this space yours.",
-                    color = Petal,
-                    fontSize = 14.sp
+                    "Create your local profile to personalise the Bloom experience. It only takes a moment.",
+                    color = Ink.copy(alpha = 0.66f), fontSize = 14.sp, lineHeight = 21.sp
                 )
-                Spacer(Modifier.height(26.dp))
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it.take(32) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("What should we call you?") },
-                    placeholder = { Text("Your name") },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Petal,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.28f),
-                        focusedLabelColor = Petal,
-                        unfocusedLabelColor = Ink.copy(alpha = 0.65f),
-                        cursorColor = Petal
-                    )
-                )
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "This creates a profile on this device. No email or password is needed.",
-                    color = Ink.copy(alpha = 0.55f),
-                    fontSize = 11.sp
-                )
-                Spacer(Modifier.height(24.dp))
-                Button(
-                    onClick = { onComplete(cleanName) },
-                    enabled = cleanName.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFB8C7FF),
-                        contentColor = Color(0xFF101526)
-                    )
-                ) {
-                    Text("Create profile", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                }
-                TextButton(onClick = onSkip) {
-                    Text("Set up later", color = Ink.copy(alpha = 0.72f))
+                Spacer(Modifier.height(28.dp))
+                listOf(
+                    Triple("01", "A personal welcome", "See your name on the Bloom home screen."),
+                    Triple("02", "Your own settings", "Keep your layout and viewing preferences on this device."),
+                    Triple("03", "Your app space", "Make the launcher feel like your own.")
+                ).forEach { item ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 17.dp)) {
+                        Box(Modifier.size(34.dp).background(Color(0x334F638D), RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+                            Text(item.first, color = Petal, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(item.second, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text(item.third, color = Ink.copy(alpha = 0.52f), fontSize = 10.sp)
+                        }
+                    }
                 }
                 Spacer(Modifier.height(5.dp))
-                Text(
-                    "BLOOM ATMOSPHERE  •  YOUR SPACE, YOUR RULES",
-                    color = Ink.copy(alpha = 0.34f),
-                    fontSize = 9.sp,
-                    letterSpacing = 1.4.sp
-                )
+                Text("BLOOM ATMOSPHERE  •  TV OS LITE", color = Ink.copy(alpha = 0.3f), fontSize = 9.sp, letterSpacing = 1.7.sp)
+            }
+
+            Surface(
+                modifier = Modifier.weight(1f).widthIn(max = 470.dp),
+                color = Color(0xDD111827),
+                shape = RoundedCornerShape(30.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.17f)),
+                shadowElevation = 22.dp
+            ) {
+                Column(
+                    Modifier.padding(horizontal = 30.dp, vertical = 27.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.size(46.dp).background(
+                                Brush.linearGradient(listOf(Color(0xFF9CB8FF), Color(0xFF8B70B7))),
+                                RoundedCornerShape(15.dp)
+                            ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("b", color = Color.White, fontSize = 31.sp, fontWeight = FontWeight.Light)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text("BLOOM PROFILE", color = Petal, fontSize = 9.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                            Text("Your setup", color = Ink.copy(alpha = 0.6f), fontSize = 11.sp)
+                        }
+                    }
+                    Spacer(Modifier.height(23.dp))
+                    Text(
+                        if (initialName.isBlank()) "Welcome to Bloom" else "Edit your profile",
+                        color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Light
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text("First, let's give your space a name.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
+                    Spacer(Modifier.height(20.dp))
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0x252F4167),
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
+                    ) {
+                        Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier.size(48.dp).background(
+                                    Brush.linearGradient(listOf(Color(0xFFB8C7FF), Color(0xFF8A78B8))),
+                                    CircleShape
+                                ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(initial, color = Color(0xFF101526), fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.width(13.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(cleanName.ifBlank { "Your profile" }, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                Text("BLOOM MEMBER  •  THIS DEVICE", color = Ink.copy(alpha = 0.48f), fontSize = 8.sp, letterSpacing = 1.sp)
+                            }
+                            Text("PREVIEW", color = Petal.copy(alpha = 0.8f), fontSize = 8.sp, letterSpacing = 1.sp)
+                        }
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it.filter { ch -> !ch.isISOControl() }.take(32) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Display name") },
+                        placeholder = { Text("What should Bloom call you?") },
+                        supportingText = {
+                            Text(
+                                when {
+                                    cleanName.isBlank() -> "Use at least 2 characters."
+                                    !validName -> "Your name needs at least 2 characters."
+                                    else -> "${cleanName.length}/32 characters"
+                                }
+                            )
+                        },
+                        shape = RoundedCornerShape(15.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                            focusedBorderColor = Petal, unfocusedBorderColor = Color.White.copy(alpha = 0.22f),
+                            focusedLabelColor = Petal, unfocusedLabelColor = Ink.copy(alpha = 0.58f),
+                            cursorColor = Petal, focusedSupportingTextColor = Ink.copy(alpha = 0.55f),
+                            unfocusedSupportingTextColor = Ink.copy(alpha = 0.45f)
+                        )
+                    )
+                    Spacer(Modifier.height(13.dp))
+                    Row(verticalAlignment = Alignment.Top) {
+                        Text("●", color = Color(0xFF8FD5B1), fontSize = 10.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Private by design. This profile is saved locally on this device. Bloom does not ask for an email address or password.",
+                            color = Ink.copy(alpha = 0.56f), fontSize = 10.sp, lineHeight = 15.sp
+                        )
+                    }
+                    Spacer(Modifier.height(19.dp))
+                    Button(
+                        onClick = { onComplete(cleanName) },
+                        enabled = validName,
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(15.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFB8C7FF),
+                            contentColor = Color(0xFF101526),
+                            disabledContainerColor = Color(0xFF56617D),
+                            disabledContentColor = Color(0xFFB8BDCA)
+                        )
+                    ) {
+                        Text("Create my profile  →", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
+                        Text("I'll do this later", color = Ink.copy(alpha = 0.65f), fontSize = 12.sp)
+                    }
+                    Text(
+                        "By continuing, you create a profile stored only within this Bloom installation.",
+                        color = Ink.copy(alpha = 0.34f), fontSize = 9.sp, lineHeight = 13.sp
+                    )
+                }
             }
         }
     }
 }
-
 
 @Composable
 private fun SystemMetricCard(title: String, value: String, detail: String, modifier: Modifier = Modifier) {
