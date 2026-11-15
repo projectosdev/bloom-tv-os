@@ -12,6 +12,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +26,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun SystemInfoScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val initialFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(initialFocusRequester)
     val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
     val versionName = packageInfo.versionName ?: "Unknown"
     val versionCode = if (Build.VERSION.SDK_INT >= 28) {
@@ -37,6 +42,7 @@ internal fun SystemInfoScreen(onBack: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Surface(
+                modifier = Modifier.focusRequester(initialFocusRequester),
                 onClick = onBack,
                 color = Color(0x22FFFFFF),
                 shape = CircleShape,

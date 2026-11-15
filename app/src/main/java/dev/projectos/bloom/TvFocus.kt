@@ -1,0 +1,18 @@
+package dev.projectos.bloom
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+
+/**
+ * Gives newly displayed TV screens a predictable first D-pad focus target.
+ * The frame wait lets Compose attach the focus target before requesting focus.
+ */
+@Composable
+internal fun RequestFocusOnEntry(focusRequester: FocusRequester) {
+    LaunchedEffect(focusRequester) {
+        withFrameNanos { }
+        runCatching { focusRequester.requestFocus() }
+    }
+}

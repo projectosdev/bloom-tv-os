@@ -32,6 +32,9 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Run unit tests
+        run: gradle --no-daemon :app:testDebugUnitTest
+
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug -PbloomVersionCode=${{ github.run_number }} -PbloomVersionName=0.1.${{ github.run_number }}
 

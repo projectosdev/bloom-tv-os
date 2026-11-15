@@ -55,7 +55,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
@@ -85,26 +89,6 @@ private data class BloomUpdate(
     val apkUrl: String,
     val releaseUrl: String
 )
-
-/** Compares numeric dotted versions such as 0.9.12 and 0.10.0. */
-private fun compareBloomVersions(left: String, right: String): Int {
-    fun parts(version: String): List<Long> {
-        val normalized = version.trim().removePrefix("v").substringBefore('-').substringBefore('+')
-        require(Regex("^\\d+(?:\\.\\d+)*$").matches(normalized)) {
-            "Invalid Bloom version: $version"
-        }
-        return normalized.split('.').map { it.toLong() }
-    }
-
-    val leftParts = parts(left)
-    val rightParts = parts(right)
-    for (index in 0 until maxOf(leftParts.size, rightParts.size)) {
-        val a = leftParts.getOrElse(index) { 0L }
-        val b = rightParts.getOrElse(index) { 0L }
-        if (a != b) return a.compareTo(b)
-    }
-    return 0
-}
 
 private suspend fun checkForBloomUpdate(context: android.content.Context): BloomUpdate? =
     withContext(Dispatchers.IO) {
@@ -371,18 +355,27 @@ private fun LauncherScreen() {
     var showSignUp by remember { mutableStateOf(!preferences.getBoolean("profile_setup_complete", false)) }
     var availableUpdate by remember { mutableStateOf<BloomUpdate?>(null) }
     var updateBusy by remember { mutableStateOf(false) }
+    var updateCheckInProgress by remember { mutableStateOf(false) }
+    var hasCompletedUpdateCheck by remember { mutableStateOf(false) }
     var updateMessage by remember { mutableStateOf("") }
     val updateScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         while (true) {
+            updateCheckInProgress = true
             val check = runCatching { checkForBloomUpdate(context) }
             if (check.isSuccess) {
                 availableUpdate = check.getOrNull()
-                updateMessage = ""
+                hasCompletedUpdateCheck = true
+                updateMessage = if (availableUpdate == null) {
+                    "Bloom is up to date."
+                } else {
+                    "A new version is ready to install."
+                }
             } else {
                 updateMessage = "Couldn't check for updates. Check your internet connection and try again."
             }
-            kotlinx.coroutines.delay(6 * 60 * 60 * 1000L)
+            updateCheckInProgress = false
+            delay(6 * 60 * 60 * 1000L)
         }
     }
     var animationsEnabled by remember { mutableStateOf(preferences.getBoolean("animations_enabled", true)) }
@@ -409,6 +402,31 @@ private fun LauncherScreen() {
     }
 
     var installed by remember { mutableStateOf(discoverTvApps(context)) }
+    val activity = context as? ComponentActivity
+    DisposableEffect(activity) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                installed = discoverTvApps(context)
+            }
+        }
+        activity?.lifecycle?.addObserver(observer)
+        onDispose { activity?.lifecycle?.removeObserver(observer) }
+    }
+
+    val homeFocusRequester = remember { FocusRequester() }
+    val storeFocusRequester = remember { FocusRequester() }
+    val homeVisible = !showSettings && !showAppLibrary && !showStore && !showSignUp &&
+        !showControlCentre && !showBloomSearch && !showAmbient && !showProfiles
+    LaunchedEffect(homeVisible, installed.firstOrNull()?.packageName) {
+        if (homeVisible) {
+            withFrameNanos { }
+            runCatching {
+                if (installed.isNotEmpty()) homeFocusRequester.requestFocus()
+                else storeFocusRequester.requestFocus()
+            }
+        }
+    }
+
     var clockText by remember {
         mutableStateOf(SimpleDateFormat("EEE, d MMM  •  HH:mm", Locale.getDefault()).format(Date()))
     }
@@ -421,7 +439,7 @@ private fun LauncherScreen() {
 
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
-            visible = !showSettings && !showAppLibrary && !showStore && !showSignUp && !showControlCentre && !showBloomSearch && !showAmbient && !showProfiles,
+            visible = homeVisible,
             enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 30 else 0 }, animationSpec = tween(transitionDuration)),
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) -it / 40 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
@@ -441,6 +459,7 @@ private fun LauncherScreen() {
                     }
                     Spacer(Modifier.width(14.dp))
                     Surface(
+                        modifier = Modifier.focusRequester(storeFocusRequester),
                         onClick = { showStore = true },
                         color = Color(0xFF684D70),
                         shape = RoundedCornerShape(30.dp),
@@ -569,7 +588,12 @@ private fun LauncherScreen() {
                 } else {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         items(installed, key = { it.packageName }) { app ->
-                            AppTile(app, animationsEnabled && !reduceMotion, compactTiles) {
+                            AppTile(
+                                app,
+                                animationsEnabled && !reduceMotion,
+                                compactTiles,
+                                focusRequester = if (installed.firstOrNull()?.packageName == app.packageName) homeFocusRequester else null
+                            ) {
                                 runCatching { launchBloomApp(context, app) }
                             }
                         }
@@ -657,17 +681,45 @@ private fun LauncherScreen() {
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) it / 35 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
             when {
-                showUpdates -> UpdateScreen(update = availableUpdate, message = updateMessage, busy = updateBusy, onCheck = {
-                    updateScope.launch {
-                        val check = runCatching { checkForBloomUpdate(context) }
-                        if (check.isSuccess) {
-                            availableUpdate = check.getOrNull()
-                            updateMessage = if (availableUpdate == null) "Bloom is up to date." else "A new version is ready to install."
-                        } else {
-                            updateMessage = "Couldn't check for updates. Check your internet connection and try again."
+                showUpdates -> UpdateScreen(
+                    update = availableUpdate,
+                    message = updateMessage,
+                    busy = updateBusy || updateCheckInProgress,
+                    checking = updateCheckInProgress,
+                    downloading = updateBusy,
+                    hasChecked = hasCompletedUpdateCheck,
+                    onCheck = {
+                        if (!updateCheckInProgress && !updateBusy) {
+                            updateScope.launch {
+                                updateCheckInProgress = true
+                                updateMessage = "Checking for updates…"
+                                try {
+                                    val check = runCatching { checkForBloomUpdate(context) }
+                                    if (check.isSuccess) {
+                                        availableUpdate = check.getOrNull()
+                                        hasCompletedUpdateCheck = true
+                                        updateMessage = if (availableUpdate == null) "Bloom is up to date." else "A new version is ready to install."
+                                    } else {
+                                        updateMessage = "Couldn't check for updates. Check your internet connection and try again."
+                                    }
+                                } finally {
+                                    updateCheckInProgress = false
+                                }
+                            }
                         }
-                    }
-                }, onInstall = { update -> if (!updateBusy) updateScope.launch { updateBusy = true; runCatching { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }.onFailure { updateMessage = it.message ?: "Couldn't install this update." }; updateBusy = false } }, onBack = { showUpdates = false })
+                    },
+                    onInstall = { update ->
+                        if (!updateBusy && !updateCheckInProgress) {
+                            updateScope.launch {
+                                updateBusy = true
+                                runCatching { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }
+                                    .onFailure { updateMessage = it.message ?: "Couldn't install this update." }
+                                updateBusy = false
+                            }
+                        }
+                    },
+                    onBack = { showUpdates = false }
+                )
                 showSystemInfo -> SystemInfoScreen(onBack = { showSystemInfo = false })
                 else -> {
                 SettingsScreen(
@@ -707,7 +759,7 @@ private fun LauncherScreen() {
 
     availableUpdate?.let { update ->
         AlertDialog(
-            onDismissRequest = { if (!updateBusy) availableUpdate = null },
+            onDismissRequest = { if (!updateBusy && !updateCheckInProgress) availableUpdate = null },
             title = { Text("A Bloom update is ready") },
             text = {
                 Column {
@@ -723,7 +775,7 @@ private fun LauncherScreen() {
                 }
             },
             confirmButton = {
-                TextButton(enabled = !updateBusy, onClick = {
+                TextButton(enabled = !updateBusy && !updateCheckInProgress, onClick = {
                     updateScope.launch {
                         updateBusy = true
                         runCatching { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }
@@ -761,11 +813,11 @@ private fun SettingsScreen(
     onSystemInfoClick: () -> Unit,
     onBack: () -> Unit
 ) {
+    val initialFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(initialFocusRequester)
     Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 28.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(onClick = onBack, color = Glass, shape = CircleShape, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))) {
-                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink) }
-            }
+            BloomBackButton(onClick = onBack, focusRequester = initialFocusRequester)
             Spacer(Modifier.width(20.dp))
             Column {
                 Text("Bloom Settings", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
@@ -858,6 +910,30 @@ private fun BloomActionSurface(
 }
 
 @Composable
+private fun BloomBackButton(
+    onClick: () -> Unit,
+    focusRequester: FocusRequester
+) {
+    var focused by remember { mutableStateOf(false) }
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .focusRequester(focusRequester)
+            .onFocusChanged { focused = it.isFocused },
+        color = if (focused) Color(0xFF3A4A6D) else Glass,
+        shape = CircleShape,
+        border = BorderStroke(
+            if (focused) 2.dp else 1.dp,
+            if (focused) BloomAccent.value else Color.White.copy(alpha = 0.15f)
+        )
+    ) {
+        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink)
+        }
+    }
+}
+
+@Composable
 private fun SettingsSwitchRow(
     title: String,
     subtitle: String,
@@ -889,20 +965,23 @@ private fun UpdateScreen(
     update: BloomUpdate?,
     message: String,
     busy: Boolean,
+    checking: Boolean,
+    downloading: Boolean,
+    hasChecked: Boolean,
     onCheck: () -> Unit,
     onInstall: (BloomUpdate) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val initialFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(initialFocusRequester)
     val packageInfo = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()
     }
     val installedVersion = packageInfo?.versionName ?: "Preview"
     Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 30.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(onClick = onBack, color = Glass, shape = CircleShape, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))) {
-                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink) }
-            }
+            BloomBackButton(onClick = onBack, focusRequester = initialFocusRequester)
             Spacer(Modifier.width(18.dp))
             Column {
                 Text("Software Update", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
@@ -921,12 +1000,26 @@ private fun UpdateScreen(
                 Spacer(Modifier.height(12.dp))
                 Text("Bloom ${update?.versionName ?: installedVersion}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Light)
                 Spacer(Modifier.height(6.dp))
-                Text(if (update != null) "A new version is available." else "Installed version · $installedVersion", color = Ink.copy(alpha = 0.68f), fontSize = 13.sp)
+                Text(
+                    when {
+                        update != null -> "A new version is available."
+                        checking -> "Checking for updates…"
+                        message.startsWith("Couldn't check") -> "Update status couldn't be verified."
+                        hasChecked -> "You're up to date."
+                        else -> "Checking for updates…"
+                    },
+                    color = Ink.copy(alpha = 0.68f),
+                    fontSize = 13.sp
+                )
                 Spacer(Modifier.height(20.dp))
                 if (update != null) {
                     Button(onClick = { onInstall(update) }, enabled = !busy,
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF111522))) {
-                        Text(if (busy) "Preparing update…" else "Update now")
+                        Text(when {
+                            downloading -> "Preparing update…"
+                            checking -> "Checking…"
+                            else -> "Update now"
+                        })
                     }
                     TextButton(onClick = {
                         runCatching {
@@ -985,6 +1078,8 @@ private val bloomStoreApps = listOf(
 @Composable
 private fun BloomStoreScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val initialFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(initialFocusRequester)
     var search by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
     var selectedApp by remember { mutableStateOf<StoreApp?>(null) }
@@ -1013,12 +1108,7 @@ private fun BloomStoreScreen(onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(onClick = onBack, color = Glass, shape = CircleShape,
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))) {
-                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink)
-                }
-            }
+            BloomBackButton(onClick = onBack, focusRequester = initialFocusRequester)
             Spacer(Modifier.width(18.dp))
             Column(Modifier.weight(1f)) {
                 Text("Bloom Store", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
@@ -1159,22 +1249,15 @@ private fun AppLibraryScreen(
     onLaunch: (TvApp) -> Unit,
     onBack: () -> Unit
 ) {
+    val initialFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(initialFocusRequester)
     var search by remember { mutableStateOf("") }
     val filteredApps = remember(apps, search) {
         apps.filter { it.title.contains(search, ignoreCase = true) }
     }
     Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 30.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                onClick = onBack,
-                color = Glass,
-                shape = CircleShape,
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
-            ) {
-                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink)
-                }
-            }
+            BloomBackButton(onClick = onBack, focusRequester = initialFocusRequester)
             Spacer(Modifier.width(18.dp))
             Column(Modifier.weight(1f)) {
                 Text("App library", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
@@ -1234,7 +1317,13 @@ private fun AppLibraryScreen(
 }
 
 @Composable
-private fun AppTile(app: TvApp, animationsEnabled: Boolean, compact: Boolean, launch: () -> Unit) {
+private fun AppTile(
+    app: TvApp,
+    animationsEnabled: Boolean,
+    compact: Boolean,
+    focusRequester: FocusRequester? = null,
+    launch: () -> Unit
+) {
     val context = LocalContext.current
     val appIcon = remember(app.packageName) {
         runCatching {
@@ -1260,7 +1349,12 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, compact: Boolean, la
     )
     Surface(
         onClick = launch,
-        modifier = Modifier.width(if (compact) 174.dp else 210.dp).height(if (compact) 116.dp else 146.dp).scale(scale).onFocusChanged { focused = it.isFocused },
+        modifier = Modifier
+            .width(if (compact) 174.dp else 210.dp)
+            .height(if (compact) 116.dp else 146.dp)
+            .scale(scale)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .onFocusChanged { focused = it.isFocused },
         color = tileColor,
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) BloomAccent.value else Color.White.copy(alpha = 0.12f))
@@ -1295,6 +1389,8 @@ private fun BloomSignUpScreen(
     onComplete: (String) -> Unit,
     onSkip: () -> Unit
 ) {
+    val nameFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(nameFocusRequester)
     var name by remember(initialName) { mutableStateOf(initialName) }
     var focused by remember { mutableStateOf(false) }
     val cleanName = name.trim()
@@ -1404,7 +1500,7 @@ private fun BloomSignUpScreen(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it.filter { ch -> !ch.isISOControl() }.take(32) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().focusRequester(nameFocusRequester),
                         singleLine = true,
                         label = { Text("Display name") },
                         placeholder = { Text("What should Bloom call you?") },
@@ -1549,12 +1645,14 @@ private fun QuickToggleCard(title: String, subtitle: String, checked: Boolean, o
 @Composable
 private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (TvApp) -> Unit, onSettings: () -> Unit) {
     val context = LocalContext.current
+    val initialFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(initialFocusRequester)
     var query by remember { mutableStateOf("") }
     val matches = remember(apps, query) { apps.filter { it.title.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) } }
     val storeMatches = remember(query) { bloomStoreApps.filter { query.isBlank() || it.name.contains(query, ignoreCase = true) || it.category.contains(query, ignoreCase = true) || it.description.contains(query, ignoreCase = true) } }
     Column(Modifier.fillMaxSize().background(Color(0xF8070B16)).padding(horizontal = 54.dp, vertical = 30.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← Back", color = BloomAccent.value) }
+            BloomBackButton(onClick = onBack, focusRequester = initialFocusRequester)
             Spacer(Modifier.width(14.dp))
             Text("Bloom Search", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light)
         }
@@ -1646,6 +1744,8 @@ private fun ThemePickerRow(selected: Int, onSelect: (Int) -> Unit) {
 private fun BloomProfilesScreen(currentName: String, onSelect: (String) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
+    val initialFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(initialFocusRequester)
     val profileSet = remember { mutableStateListOf<String>().also { list ->
         list.addAll((prefs.getStringSet("profile_names", emptySet()) ?: emptySet()).toList())
         if (currentName.isNotBlank() && !list.contains(currentName)) list.add(currentName)
@@ -1653,7 +1753,7 @@ private fun BloomProfilesScreen(currentName: String, onSelect: (String) -> Unit,
     var newName by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().background(Color(0xF8070B16)).padding(horizontal = 54.dp, vertical = 30.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← Back", color = BloomAccent.value) }
+            BloomBackButton(onClick = onBack, focusRequester = initialFocusRequester)
             Spacer(Modifier.width(16.dp))
             Column {
                 Text("Who's watching?", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light)
