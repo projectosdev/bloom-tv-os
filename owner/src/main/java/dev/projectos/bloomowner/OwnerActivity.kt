@@ -27,7 +27,7 @@ import org.json.JSONObject
 private val bg=Color(0xFF080D16); private val panel=Color(0xFF142033); private val raised=Color(0xFF203047)
 private val white=Color(0xFFF4F6FA); private val muted=Color(0xFFAAB7C8); private val accent=Color(0xFFB8D8F2); private val warn=Color(0xFFFFB5A8)
 class OwnerActivity:ComponentActivity(){override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);setContent{MaterialTheme(colorScheme=darkColorScheme(primary=accent,background=bg,surface=panel)){Console()}}}}
-private enum class P(val label:String,val group:String){HOME("Overview","COMMAND"),GLOBAL("Global operations","COMMAND"),FLEET("Test device fleet","TEST OS"),BROADCAST("Broadcast studio","TEST OS"),ALERT("Emergency alerts","TEST OS"),ENFORCE("Trust & enforcement","SAFETY"),POLICY("App & policy control","PLATFORM"),RELEASE("Release manager","PLATFORM"),DIAG("Diagnostics","PLATFORM"),AUDIT("Command history","SECURITY"),SETTINGS("Owner settings","SECURITY")}
+private enum class P(val label:String,val group:String){HOME("Overview","COMMAND"),PREVIEW("Test OS live preview","COMMAND"),GLOBAL("Global operations","COMMAND"),FLEET("Test device fleet","TEST OS"),BROADCAST("Broadcast studio","TEST OS"),ALERT("Emergency alerts","TEST OS"),ENFORCE("Trust & enforcement","SAFETY"),POLICY("App & policy control","PLATFORM"),RELEASE("Release manager","PLATFORM"),DIAG("Diagnostics","PLATFORM"),AUDIT("Command history","SECURITY"),SETTINGS("Owner settings","SECURITY")}
 private data class Cmd(val time:String,val title:String,val scope:String,val status:String)
 private fun read(p:android.content.SharedPreferences):List<Cmd>{val a=JSONArray(p.getString("queue","[]")?:"[]");return (0 until a.length()).map{val o=a.getJSONObject(it);Cmd(o.optString("time"),o.optString("title"),o.optString("scope"),o.optString("status"))}}
 private fun add(p:android.content.SharedPreferences,title:String,scope:String){val a=JSONArray();(listOf(Cmd(java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.UK).format(java.util.Date()),title,scope,"WAITING FOR SECURE BACKEND"))+read(p).take(78)).forEach{a.put(JSONObject().put("time",it.time).put("title",it.title).put("scope",it.scope).put("status",it.status))};p.edit().putString("queue",a.toString()).apply()}
@@ -46,6 +46,7 @@ private fun add(p:android.content.SharedPreferences,title:String,scope:String){v
    Spacer(Modifier.height(13.dp))
    when(page){
     P.HOME->Home(prefs,{page=it},revision)
+    P.PREVIEW->TestPreview(prefs){revision++}
     P.GLOBAL->Global(prefs){revision++}
     P.FLEET->Fleet(prefs){revision++}
     P.BROADCAST->Broadcast(prefs){revision++}
@@ -82,4 +83,45 @@ private fun add(p:android.content.SharedPreferences,title:String,scope:String){v
 @Composable private fun ReleasePage(){Page{Panel("Release management","Controlled test release rings."){listOf("Internal preview","Canary test devices","Wider test cohort","Stable test channel","Rollback planning","Release notes","Compatibility gate").forEach{Row(Modifier.fillMaxWidth().background(raised,RoundedCornerShape(8.dp)).padding(12.dp)){Text(it,color=white,modifier=Modifier.weight(1f));Note("NOT CONNECTED",warn)}};Note("GitHub Actions builds APKs. This screen does not silently install or roll back software.")}}}
 @Composable private fun Diagnostics(){Page{Panel("Diagnostics","Current integration status."){listOf("Owner console: local","Secure owner service: not configured","Test device agents: none enrolled","Alert delivery: unavailable","Remote enforcement: unavailable","Main OS: separate application ID").forEach{Note("• "+it)}}}}
 @Composable private fun Audit(p:android.content.SharedPreferences,rev:Int,clear:()->Unit){val q=remember(rev){read(p)};Page{Panel("Command history","Newest records first. Queueing is not delivery."){if(q.isEmpty())Note("No command records.");q.forEach{Column(Modifier.fillMaxWidth().background(raised,RoundedCornerShape(8.dp)).padding(10.dp)){Text(it.title,color=white,fontSize=12.sp,fontWeight=FontWeight.SemiBold);Note(it.time+" · "+it.scope);Note(it.status,warn)}};Btn("Clear local history",clear)}}}
+@Composable private fun TestPreview(p:android.content.SharedPreferences,changed:()->Unit){
+ var mode by remember{mutableStateOf("NORMAL")}
+ var alertVisible by remember{mutableStateOf(false)}
+ var soundStatus by remember{mutableStateOf("Sound preview ready")}
+ var alertTitle by remember{mutableStateOf("Bloom service notice")}
+ var alertMessage by remember{mutableStateOf("This is a test announcement for Bloom Test OS.")}
+ val context=androidx.compose.ui.platform.LocalContext.current
+ Page {
+  Panel("Live test screen","A safe, interactive preview of what a TV user sees. Changes here are simulated on this owner-console screen.") {
+   Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+    listOf("NORMAL","MAINTENANCE","RESTRICTED","ALERT").forEach { m ->
+     Text(m,color=if(mode==m)bg else white,fontSize=9.sp,fontWeight=FontWeight.Bold,modifier=Modifier.background(if(mode==m)accent else raised,RoundedCornerShape(8.dp)).clickable{mode=m;alertVisible=m=="ALERT"}.padding(9.dp))
+    }
+   }
+   Box(Modifier.fillMaxWidth().height(290.dp).background(Color(0xFF070D19),RoundedCornerShape(16.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.SpaceBetween) {
+     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Column{Text("BLOOM",color=white,fontSize=15.sp,fontWeight=FontWeight.Black,letterSpacing=4.sp);Text("TEST OS · PREVIEW",color=accent,fontSize=9.sp,letterSpacing=2.sp)};Text("19:42  ·  TEST",color=muted,fontSize=10.sp)}
+     when(mode){
+      "MAINTENANCE"->Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text("WE'LL BE RIGHT BACK",color=accent,fontSize=11.sp,letterSpacing=2.sp);Text("Bloom is undergoing maintenance",color=white,fontSize=24.sp,fontWeight=FontWeight.Bold);Text("The test environment is temporarily unavailable.",color=muted,fontSize=12.sp)}
+      "RESTRICTED"->Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text("ACCESS RESTRICTED",color=warn,fontSize=11.sp,letterSpacing=2.sp);Text("This test device is temporarily restricted",color=white,fontSize=22.sp,fontWeight=FontWeight.Bold);Text("A review is required. This is a simulated restriction preview.",color=muted,fontSize=12.sp)}
+      else->Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text(if(mode=="ALERT")"PRIORITY NOTICE" else "YOUR SCREEN. YOUR BLOOM.",color=accent,fontSize=10.sp,letterSpacing=2.sp);Text(if(alertVisible)alertTitle else "Welcome back",color=white,fontSize=25.sp,fontWeight=FontWeight.Bold);Text(if(alertVisible)alertMessage else "Discover apps, games and entertainment in your Bloom test environment.",color=muted,fontSize=12.sp);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("Player","Apps","Games","Settings").forEach{Text(it,color=white,fontSize=10.sp,modifier=Modifier.background(raised,RoundedCornerShape(8.dp)).padding(horizontal=12.dp,vertical=9.dp))}}}
+     }
+     Text("SIMULATED SCREEN · NO OTHER DEVICE IS AFFECTED",color=muted,fontSize=8.sp,letterSpacing=1.sp)
+    }
+   }
+   Row(horizontalArrangement=Arrangement.spacedBy(7.dp),verticalAlignment=Alignment.CenterVertically){Btn("Maintenance"){mode="MAINTENANCE";alertVisible=false};Btn("Restriction"){mode="RESTRICTED";alertVisible=false};Btn("Normal TV"){mode="NORMAL";alertVisible=false};Btn("Alert screen"){mode="ALERT";alertVisible=true}}
+  }
+  Panel("Alert sound and message preview","Original Bloom test tone only. Not the UK government Emergency Alerts signal.") {
+   Input(alertTitle,{alertTitle=it},"Alert title")
+   Input(alertMessage,{alertMessage=it},"Alert message",true)
+   Row(verticalAlignment=Alignment.CenterVertically){Btn("Play sound"){try{val t=ToneGenerator(AudioManager.STREAM_ALARM,65);t.startTone(ToneGenerator.TONE_PROP_BEEP2,700);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({t.release()},900);soundStatus="Played original Bloom test tone on this device."}catch(e:Exception){soundStatus="Audio preview unavailable."}};Btn("Show alert"){mode="ALERT";alertVisible=true};Btn("Clear alert"){alertVisible=false;mode="NORMAL"}}
+   Note(soundStatus,accent)
+  }
+  Panel("Scenario simulator","Try the owner actions and inspect the result before you queue a real test command.") {
+   listOf("Simulate service maintenance","Simulate a device restriction","Simulate priority alert","Restore normal TV screen").forEach { action ->
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(action,color=white,fontSize=11.sp,modifier=Modifier.weight(1f));TextButton(onClick={when(action){ "Simulate service maintenance"->mode="MAINTENANCE";"Simulate a device restriction"->mode="RESTRICTED";"Simulate priority alert"->{mode="ALERT";alertVisible=true};else->{mode="NORMAL";alertVisible=false}}}){Text("Run",color=accent)}}
+   }
+   Note("All preview actions are local simulations. They do not lock real TVs, contact authorities, or broadcast to other devices.",warn)
+  }
+ }
+}
 @Composable private fun Settings(name:String,change:(String)->Unit){Page{Panel("Owner preferences","Stored on this installation."){Input(name,change,"Owner display name");Note("Secure your Android device with a screen lock. Server-backed owner authentication is not yet configured.")}}}
