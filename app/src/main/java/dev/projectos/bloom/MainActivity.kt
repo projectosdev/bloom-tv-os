@@ -43,6 +43,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
@@ -113,32 +114,55 @@ private fun BloomRoot() {
 private fun BootScreen() {
     val motion = rememberInfiniteTransition(label = "petal-motion")
     val scale by motion.animateFloat(
-        0.78f, 1.04f,
-        infiniteRepeatable(tween(1700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        0.94f, 1.06f,
+        infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "bloom-scale"
+    )
+    val glow by motion.animateFloat(
+        0.35f, 0.75f,
+        infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "bloom-glow"
     )
     Column(
         Modifier.fillMaxSize().padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Box(Modifier.size(170.dp).scale(scale), contentAlignment = Alignment.Center) {
-            repeat(5) { index ->
+        Box(Modifier.size(190.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(178.dp).scale(scale)
+                    .background(Color(0x22FFB8D2), CircleShape)
+            )
+            listOf(-72f, 0f, 72f, 144f, 216f).forEach { angle ->
                 Box(
-                    Modifier.size(43.dp, 88.dp).scale(1f - index * 0.025f)
+                    Modifier.offset(y = (-34).dp).size(42.dp, 78.dp)
+                        .scale(scale)
+                        .rotate(angle)
                         .background(
-                            Brush.verticalGradient(listOf(Color(0xFFFFE0EC), Petal, Color(0xFFB77CA8))),
+                            Brush.verticalGradient(listOf(Color(0xFFFFEAF1), Petal, Color(0xFFB77CA8))),
                             RoundedCornerShape(50)
                         )
                 )
             }
-            Box(Modifier.size(27.dp).background(Color(0xFFFFE7A8), CircleShape))
+            Box(
+                Modifier.size(31.dp)
+                    .background(Color(0xFFFFE7A8), CircleShape)
+                    .border(2.dp, Color(0xFFFFF4D6), CircleShape)
+            )
         }
-        Spacer(Modifier.height(26.dp))
-        Text("BLOOM", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Light, letterSpacing = 9.sp)
-        Text("TV OS LITE", color = Petal, fontSize = 13.sp, letterSpacing = 5.sp)
+        Spacer(Modifier.height(24.dp))
+        Text("bloom", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Light, letterSpacing = 5.sp)
+        Text("TV OS LITE", color = Petal, fontSize = 12.sp, letterSpacing = 6.sp)
+        Spacer(Modifier.height(14.dp))
+        Text("A lighter way to watch.", color = Ink.copy(alpha = 0.76f), fontSize = 14.sp)
+        Spacer(Modifier.height(34.dp))
+        LinearProgressIndicator(
+            modifier = Modifier.width(112.dp).height(3.dp),
+            color = Petal,
+            trackColor = Color.White.copy(alpha = 0.12f)
+        )
         Spacer(Modifier.height(12.dp))
-        Text("A lighter way to watch.", color = Ink.copy(alpha = 0.7f), fontSize = 14.sp)
+        Text("GETTING THINGS READY", color = Ink.copy(alpha = 0.42f), fontSize = 9.sp, letterSpacing = 2.sp)
     }
 }
 
@@ -221,9 +245,46 @@ private fun LauncherScreen() {
                     }
                 }
                 Spacer(Modifier.height(48.dp))
-                Text("Good evening.", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Light)
+                Text("Welcome home.", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Light)
                 Text("Your entertainment, all in one place.", color = Ink.copy(alpha = 0.7f), fontSize = 15.sp)
-                Spacer(Modifier.height(42.dp))
+                Spacer(Modifier.height(24.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth().height(154.dp),
+                    color = Color(0x332F2B43),
+                    shape = RoundedCornerShape(26.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.13f))
+                ) {
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0x664F3C61), Color(0x332C3C5C), Color(0x225B405F))
+                            )
+                        ).padding(horizontal = 28.dp, vertical = 20.dp)
+                    ) {
+                        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("YOUR SPACE. YOUR SHOWS.", color = Petal, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(9.dp))
+                                Text("Everything starts here.", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Light)
+                                Spacer(Modifier.height(5.dp))
+                                Text("Open your apps and pick up where you want to go.", color = Ink.copy(alpha = 0.7f), fontSize = 12.sp)
+                            }
+                            Surface(
+                                onClick = { showAppLibrary = true },
+                                color = Color(0xFF684D70),
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                            ) {
+                                Text("Explore apps  ›", modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        Box(
+                            Modifier.align(Alignment.CenterEnd).offset(x = 12.dp).size(120.dp)
+                                .background(Color(0x18FFB8D2), CircleShape)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(25.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("YOUR APPS", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(18.dp))
