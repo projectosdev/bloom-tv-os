@@ -261,7 +261,12 @@ private fun LauncherScreen() {
     var showUpdates by remember { mutableStateOf(false) }
     var showSystemInfo by remember { mutableStateOf(false) }
     var availableUpdate by remember { mutableStateOf<BloomUpdate?>(null) }
-    LaunchedEffect(Unit) {\n        while (true) {\n            availableUpdate = checkForBloomUpdate(context)\n            kotlinx.coroutines.delay(6 * 60 * 60 * 1000L)\n        }\n    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            availableUpdate = checkForBloomUpdate(context)
+            kotlinx.coroutines.delay(6 * 60 * 60 * 1000L)
+        }
+    }
     val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     var animationsEnabled by remember { mutableStateOf(preferences.getBoolean("animations_enabled", true)) }
     var reduceMotion by remember { mutableStateOf(preferences.getBoolean("reduce_motion", false)) }
