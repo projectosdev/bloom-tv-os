@@ -94,7 +94,37 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
         }
     }
 
-    return discovered.values.sortedBy { it.title.lowercase() }
+    if (!discovered.containsKey("com.openai.chatgpt")) {
+        discovered["com.openai.chatgpt"] = TvApp(
+            "ChatGPT",
+            "com.openai.chatgpt",
+            "",
+            Intent.CATEGORY_LAUNCHER,
+            "OpenAI assistant"
+        )
+    }
+
+    return discovered.values.sortedWith(
+        compareBy<TvApp> { if (it.packageName == "com.openai.chatgpt") 0 else 1 }
+            .thenBy { it.title.lowercase() }
+    )
+}
+
+private fun launchBloomApp(context: android.content.Context, app: TvApp) {
+    if (app.packageName == "com.openai.chatgpt") {
+        val installedIntent = context.packageManager.getLaunchIntentForPackage("com.openai.chatgpt")
+        if (installedIntent != null) {
+            context.startActivity(installedIntent)
+        } else {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com")))
+        }
+        return
+    }
+
+    val launchIntent = Intent(Intent.ACTION_MAIN)
+        .addCategory(app.launcherCategory)
+        .setClassName(app.packageName, app.activityName)
+    context.startActivity(launchIntent)
 }
 
 @Composable
@@ -300,12 +330,7 @@ private fun LauncherScreen() {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         items(installed) { app ->
                             AppTile(app, animationsEnabled && !reduceMotion) {
-                                runCatching {
-                                    val launchIntent = Intent(Intent.ACTION_MAIN)
-                                        .addCategory(app.launcherCategory)
-                                        .setClassName(app.packageName, app.activityName)
-                                    context.startActivity(launchIntent)
-                                }
+                                runCatching { launchBloomApp(context, app) }
                             }
                         }
                     }
@@ -328,12 +353,7 @@ private fun LauncherScreen() {
                 apps = installed,
                 onRefresh = { installed = discoverTvApps(context) },
                 onLaunch = { app ->
-                    runCatching {
-                        val launchIntent = Intent(Intent.ACTION_MAIN)
-                            .addCategory(app.launcherCategory)
-                            .setClassName(app.packageName, app.activityName)
-                        context.startActivity(launchIntent)
-                    }
+                    runCatching { launchBloomApp(context, app) }
                 },
                 onBack = { showAppLibrary = false }
             )
