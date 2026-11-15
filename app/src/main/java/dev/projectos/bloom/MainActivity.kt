@@ -503,6 +503,7 @@ private fun LauncherScreen() {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     TextButton(onClick = { showBloomSearch = true }) { Text("⌕  Search Bloom", color = BloomAccent.value) }
                     TextButton(onClick = { showAmbient = true }) { Text("✦  Bloom Ambient", color = BloomAccent.value) }
+                    TextButton(onClick = { runCatching { context.packageManager.getLaunchIntentForPackage("com.openai.chatgpt")?.let { context.startActivity(it) } ?: context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com"))) } }) { Text("✧  Bloom Assist", color = BloomAccent.value) }
                 }
                 Spacer(Modifier.height(8.dp))
                 if (installed.isEmpty()) {
@@ -1386,6 +1387,7 @@ private fun BloomControlCentre(
     compactTiles: Boolean, onCompactTiles: (Boolean) -> Unit,
     onClose: () -> Unit, onSettings: () -> Unit
 ) {
+    val context = LocalContext.current
     Box(Modifier.fillMaxSize().background(Color(0xCC030611)).padding(30.dp), contentAlignment = Alignment.Center) {
         Surface(
             modifier = Modifier.fillMaxWidth().widthIn(max = 900.dp),
@@ -1411,7 +1413,17 @@ private fun BloomControlCentre(
                     QuickToggleCard("Compact tiles", "Fit more apps on screen", compactTiles, onCompactTiles, Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(20.dp))
-                Text("Device controls such as Wi-Fi, Bluetooth and brightness remain managed by Android. Bloom won't pretend it can change system settings without permission.", color = Ink.copy(alpha = 0.5f), fontSize = 11.sp, lineHeight = 16.sp)
+                Text("DEVICE SETTINGS", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(9.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SystemSettingButton("Wi-Fi", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    SystemSettingButton("Bluetooth", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    SystemSettingButton("Display", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    SystemSettingButton("Sound", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_SOUND_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    SystemSettingButton("Accessibility", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("These open Android's own settings pages. Android keeps control of protected device features.", color = Ink.copy(alpha = 0.5f), fontSize = 10.sp, lineHeight = 14.sp)
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = onSettings, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB8C7FF), contentColor = Color(0xFF101526))) { Text("Open all Bloom settings  →") }
             }
@@ -1545,5 +1557,13 @@ private fun BloomProfilesScreen(currentName: String, onSelect: (String) -> Unit,
             }, colors = ButtonDefaults.buttonColors(containerColor = BloomAccent.value, contentColor = Midnight)) { Text("Create") }
         }
         Text("Profiles are stored locally. They do not create separate Android accounts or lock apps.", color = Ink.copy(alpha = 0.42f), fontSize = 10.sp)
+    }
+}
+
+
+@Composable
+private fun SystemSettingButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = modifier.height(46.dp), contentPadding = PaddingValues(horizontal = 5.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))) {
+        Text(label, fontSize = 10.sp, maxLines = 1)
     }
 }
