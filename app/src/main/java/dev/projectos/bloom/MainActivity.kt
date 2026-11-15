@@ -1,6 +1,7 @@
 package dev.projectos.bloom
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -63,6 +64,29 @@ class MainActivity : ComponentActivity() {
 
 private data class TvApp(val title: String, val packageName: String, val detail: String)
 
+private fun discoverTvApps(context: android.content.Context): List<TvApp> {
+    val packageManager = context.packageManager
+    val categories = listOf(Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER)
+    val discovered = linkedMapOf<String, TvApp>()
+
+    categories.forEach { category ->
+        val query = Intent(Intent.ACTION_MAIN).addCategory(category)
+        @Suppress("DEPRECATION")
+        val activities = packageManager.queryIntentActivities(query, PackageManager.MATCH_DEFAULT_ONLY)
+        activities.forEach { resolveInfo ->
+            val activityInfo = resolveInfo.activityInfo ?: return@forEach
+            val packageName = activityInfo.packageName
+            if (packageName == context.packageName || discovered.containsKey(packageName)) return@forEach
+            val label = resolveInfo.loadLabel(packageManager)?.toString()?.trim().orEmpty()
+            if (label.isNotEmpty()) {
+                discovered[packageName] = TvApp(label, packageName, "Installed app")
+            }
+        }
+    }
+
+    return discovered.values.sortedBy { it.title.lowercase() }
+}
+
 @Composable
 private fun BloomRoot() {
     var booting by remember { mutableStateOf(true) }
@@ -124,23 +148,7 @@ private fun LauncherScreen() {
         if (showUpdates) showUpdates = false else showSettings = false
     }
 
-    val catalog = remember {
-        listOf(
-            TvApp("Netflix", "com.netflix.ninja", "Series & films"),
-            TvApp("YouTube", "com.google.android.youtube.tv", "Videos"),
-            TvApp("Disney+", "com.disney.disneyplus", "Stories"),
-            TvApp("Prime Video", "com.amazon.amazonvideo.livingroom", "Films & TV"),
-            TvApp("BBC iPlayer", "uk.co.bbc.iplayer", "BBC programmes"),
-            TvApp("ITVX", "com.itv.itvplayer", "ITV programmes"),
-            TvApp("Spotify", "com.spotify.tv.android", "Music"),
-            TvApp("Plex", "com.plexapp.android", "Your media")
-        )
-    }
-    val installed = remember {
-        catalog.filter { app ->
-            runCatching { context.packageManager.getPackageInfo(app.packageName, 0) }.isSuccess
-        }
-    }
+    var installed by remember { mutableStateOf(discoverTvApps(context)) }
 
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
@@ -180,11 +188,17 @@ private fun LauncherScreen() {
                 Text("Good evening.", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Light)
                 Text("Your entertainment, all in one place.", color = Ink.copy(alpha = 0.7f), fontSize = 15.sp)
                 Spacer(Modifier.height(42.dp))
-                Text("YOUR APPS", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("YOUR APPS", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(18.dp))
+                    TextButton(onClick = { installed = discoverTvApps(context) }) {
+                        Text("Refresh apps", color = Ink.copy(alpha = 0.75f), fontSize = 12.sp)
+                    }
+                }
                 Spacer(Modifier.height(18.dp))
                 if (installed.isEmpty()) {
                     Text("No supported streaming apps detected yet.", color = Ink, fontSize = 16.sp)
-                    Text("Install official TV apps on your Android TV device to see them here.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
+                    Text("Install apps on your device, then select Refresh apps.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
                 } else {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         items(installed) { app ->
