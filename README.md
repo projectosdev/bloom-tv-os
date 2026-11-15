@@ -13,6 +13,17 @@ Bloom is a lightweight, remote-first Android TV launcher concept with a calm, ci
 - Detection and launching of selected official streaming apps already installed on the device.
 - A simple boot presentation and an About screen.
 
+## Get a test APK
+
+Every push to the main branch starts a GitHub Actions Android build. When a run succeeds:
+
+1. Open the [Android build workflow](https://github.com/projectosdev/bloom-tv-os/actions/workflows/android-build.yml).
+2. Open the latest run marked **Success**.
+3. Download the `bloom-tv-os-lite-debug` artifact from the run's Artifacts section.
+4. Extract the ZIP and install `app-debug.apk` on a compatible Android device.
+
+Artifacts are temporary CI outputs, not permanent releases. The workflow retains them for 14 days.
+
 ## Platform reality
 
 This repository is an Android launcher foundation, not replacement firmware or a complete operating system image. A true standalone TV OS requires a supported platform such as AOSP or Linux, device-specific drivers, boot integration and hardware testing.
@@ -23,16 +34,16 @@ Streaming services control their own apps, DRM and distribution. Bloom does not 
 
 ## Build
 
-Open the project in Android Studio with JDK 17 and Android SDK 35 installed. Sync Gradle and build the app module.
+The GitHub Actions workflow uses JDK 17, Android SDK 35 and Gradle 8.9. To build locally, open the project in Android Studio with JDK 17 and Android SDK 35 installed, sync Gradle, and build the `app` module. The workflow invokes the installed Gradle distribution directly; a checked-in Gradle wrapper has not yet been added.
 
-The current Android application ID is dev.projectos.bloom. Keep this ID stable for upgrades. Android also requires updates to be signed with the same signing certificate as the installed version. Changing either the application ID or signing identity can cause an install conflict.
+The current Android application ID is `dev.projectos.bloom`. Keep this ID stable for upgrades. Android also requires updates to be signed with the same signing certificate as the installed version. CI debug builds use Android's debug signing configuration; an APK signed with a different key cannot update an existing installation. If Android reports a signature conflict, uninstall the old test build once before installing the new one. Do not uninstall if you need to preserve app data.
 
 ## Current limitations
 
 - This is an early preview and has not yet been verified on a range of physical Android TV devices.
 - The Settings page currently links to Android system settings and shows project information.
 - Full-device reboot and privileged system update installation are not implemented. A regular third-party launcher cannot silently reboot or replace the device OS.
-- A Gradle wrapper and automated build pipeline still need to be added before CI can produce a dependable APK artifact.
+- CI build status must be checked in Actions; a committed workflow is not proof of a successful APK build.
 
 ## Development direction
 
