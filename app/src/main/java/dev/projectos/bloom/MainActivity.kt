@@ -801,24 +801,38 @@ private fun UpdateScreen(
     }
 }
 
-private data class StoreApp(val name: String, val category: String, val packageName: String)
+private data class StoreApp(
+    val name: String,
+    val category: String,
+    val packageName: String,
+    val description: String,
+    val badge: String
+)
 
 private val bloomStoreApps = listOf(
-    StoreApp("YouTube", "Video", "com.google.android.youtube.tv"),
-    StoreApp("Netflix", "Video", "com.netflix.mediaclient"),
-    StoreApp("Prime Video", "Video", "com.amazon.amazonvideo.livingroom"),
-    StoreApp("Disney+", "Video", "com.disney.disneyplus"),
-    StoreApp("Spotify", "Music", "com.spotify.tv.android"),
-    StoreApp("Plex", "Media", "com.plexapp.android"),
-    StoreApp("ChatGPT", "Productivity", "com.openai.chatgpt")
+    StoreApp("YouTube", "Video", "com.google.android.youtube.tv", "Watch videos, creators, music and live streams.", "POPULAR"),
+    StoreApp("Netflix", "Video", "com.netflix.mediaclient", "Explore films, series and award-winning originals.", "ENTERTAINMENT"),
+    StoreApp("Prime Video", "Video", "com.amazon.amazonvideo.livingroom", "Films, series and entertainment from Prime Video.", "ENTERTAINMENT"),
+    StoreApp("Disney+", "Video", "com.disney.disneyplus", "Stories from Disney, Pixar, Marvel, Star Wars and more.", "FAMILY"),
+    StoreApp("Spotify", "Music", "com.spotify.tv.android", "Bring music, podcasts and playlists to your screen.", "MUSIC"),
+    StoreApp("Plex", "Media", "com.plexapp.android", "Organise and enjoy your personal media library.", "MEDIA"),
+    StoreApp("ChatGPT", "Productivity", "com.openai.chatgpt", "Ask questions, explore ideas and get help with everyday tasks.", "BLOOM PICK")
 )
 
 @Composable
 private fun BloomStoreScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var search by remember { mutableStateOf("") }
-    val visibleApps = remember(search) {
-        bloomStoreApps.filter { it.name.contains(search, ignoreCase = true) || it.category.contains(search, ignoreCase = true) }
+    var selectedCategory by remember { mutableStateOf("All") }
+    var selectedApp by remember { mutableStateOf<StoreApp?>(null) }
+    val categories = listOf("All", "Video", "Music", "Media", "Productivity")
+    val visibleApps = remember(search, selectedCategory) {
+        bloomStoreApps.filter { app ->
+            (selectedCategory == "All" || app.category == selectedCategory) &&
+                (app.name.contains(search, ignoreCase = true) ||
+                    app.category.contains(search, ignoreCase = true) ||
+                    app.description.contains(search, ignoreCase = true))
+        }
     }
 
     fun openStoreListing(app: StoreApp) {
@@ -828,59 +842,152 @@ private fun BloomStoreScreen(onBack: () -> Unit) {
             if (market.resolveActivity(context.packageManager) != null) context.startActivity(market)
             else context.startActivity(web)
         }.onFailure {
-            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/search?q=${Uri.encode(app.name)}&c=apps"))) }
+            runCatching {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/search?q=${Uri.encode(app.name)}&c=apps")))
+            }
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 30.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(onClick = onBack, color = Glass, shape = CircleShape, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))) {
-                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink) }
+            Surface(onClick = onBack, color = Glass, shape = CircleShape,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))) {
+                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink)
+                }
             }
             Spacer(Modifier.width(18.dp))
             Column(Modifier.weight(1f)) {
-                Text("Bloom Store", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
-                Text("Discover apps for your screen.", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
+                Text("Bloom Store", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
+                Text("A hand-picked collection for your screen.", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
+            }
+            Text("BLOOM MARKETPLACE", color = Petal.copy(alpha = 0.8f), fontSize = 9.sp, letterSpacing = 2.sp)
+        }
+        Spacer(Modifier.height(17.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextField(
+                value = search,
+                onValueChange = { search = it },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                placeholder = { Text("Search apps and categories") },
+                shape = RoundedCornerShape(16.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Glass, unfocusedContainerColor = Glass,
+                    focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Ink.copy(alpha = 0.5f), unfocusedPlaceholderColor = Ink.copy(alpha = 0.5f),
+                    focusedIndicatorColor = Petal, unfocusedIndicatorColor = Color.Transparent, cursorColor = Petal
+                )
+            )
+            Text("${bloomStoreApps.size} CURATED APPS", color = Ink.copy(alpha = 0.48f), fontSize = 9.sp, letterSpacing = 1.4.sp)
+        }
+        Spacer(Modifier.height(14.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth().height(112.dp),
+            color = Color(0x553E456D),
+            shape = RoundedCornerShape(22.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.13f))
+        ) {
+            Row(Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(listOf(Color(0x665F4B83), Color(0x332B4966), Color(0x224B6680)))
+            ).padding(horizontal = 24.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("THE BLOOM EDIT", color = Petal, fontSize = 9.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(5.dp))
+                    Text("Find your next favourite.", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Light)
+                    Text("Discover apps selected for the Bloom experience.", color = Ink.copy(alpha = 0.7f), fontSize = 11.sp)
+                }
+                Surface(onClick = { selectedApp = bloomStoreApps.first { it.name == "ChatGPT" } },
+                    color = Color(0xFFB8C7FF), shape = RoundedCornerShape(13.dp)) {
+                    Text("Editor's pick  ›", color = Color(0xFF111526), fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 17.dp, vertical = 12.dp))
+                }
             }
         }
-        Spacer(Modifier.height(20.dp))
-        TextField(
-            value = search,
-            onValueChange = { search = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("Search featured apps") },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Glass, unfocusedContainerColor = Glass,
-                focusedTextColor = Color.White, unfocusedTextColor = Color.White,
-                focusedPlaceholderColor = Ink.copy(alpha = 0.5f), unfocusedPlaceholderColor = Ink.copy(alpha = 0.5f),
-                focusedIndicatorColor = Petal, unfocusedIndicatorColor = Color.Transparent, cursorColor = Petal
-            )
-        )
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            categories.forEach { category ->
+                val active = selectedCategory == category
+                Surface(onClick = { selectedCategory = category },
+                    color = if (active) Color(0xFFB8C7FF) else Glass,
+                    shape = RoundedCornerShape(30.dp),
+                    border = BorderStroke(1.dp, if (active) Petal else Color.White.copy(alpha = 0.1f))) {
+                    Text(category, color = if (active) Color(0xFF111526) else Ink,
+                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 15.dp, vertical = 9.dp))
+                }
+            }
+        }
         Spacer(Modifier.height(12.dp))
-        Text("FEATURED APPS", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            items(visibleApps) { app ->
-                Surface(onClick = { openStoreListing(app) }, modifier = Modifier.fillMaxWidth(), color = Glass,
-                    shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(42.dp).background(Color(0x334F405F), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                            Text(app.name.take(1), color = Petal, fontSize = 21.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(if (selectedCategory == "All") "EXPLORE THE STORE" else selectedCategory.uppercase(),
+                color = Petal, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(10.dp))
+            Text("${visibleApps.size} results", color = Ink.copy(alpha = 0.42f), fontSize = 10.sp)
+        }
+        Spacer(Modifier.height(8.dp))
+        if (visibleApps.isEmpty()) {
+            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                Text("No apps match that search. Try another name or category.", color = Ink.copy(alpha = 0.65f), fontSize = 13.sp)
+            }
+        } else {
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(visibleApps) { app ->
+                    Surface(onClick = { selectedApp = app }, modifier = Modifier.fillMaxWidth(),
+                        color = Glass, shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(46.dp).background(
+                                Brush.linearGradient(listOf(Color(0x665E6795), Color(0x443E345C))),
+                                RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                                Text(app.name.take(1), color = Petal, fontSize = 23.sp, fontWeight = FontWeight.Light)
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(app.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.width(9.dp))
+                                    Text(app.badge, color = Petal.copy(alpha = 0.8f), fontSize = 8.sp, letterSpacing = 1.sp)
+                                }
+                                Spacer(Modifier.height(3.dp))
+                                Text(app.description, color = Ink.copy(alpha = 0.56f), fontSize = 10.sp, maxLines = 1)
+                            }
+                            Text("Details  ›", color = Petal, fontSize = 11.sp)
                         }
-                        Spacer(Modifier.width(14.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(app.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                            Text(app.category, color = Ink.copy(alpha = 0.52f), fontSize = 11.sp)
-                        }
-                        Text("View listing  ›", color = Petal, fontSize = 12.sp)
                     }
                 }
             }
         }
-        Spacer(Modifier.height(10.dp))
-        Text("Bloom Store opens official Google Play listings. Availability depends on your device and region. Bloom does not host or install app files itself.",
-            color = Ink.copy(alpha = 0.48f), fontSize = 11.sp)
+        Spacer(Modifier.height(8.dp))
+        Text("Apps are listed by Bloom and installed through their official Google Play pages. Availability and device compatibility are controlled by each publisher and Google Play.",
+            color = Ink.copy(alpha = 0.43f), fontSize = 10.sp)
+    }
+
+    selectedApp?.let { app ->
+        AlertDialog(
+            onDismissRequest = { selectedApp = null },
+            title = { Text(app.name, fontWeight = FontWeight.SemiBold) },
+            text = {
+                Column {
+                    Text(app.category.uppercase() + "  •  " + app.badge, color = Color(0xFF53658F), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(10.dp))
+                    Text(app.description)
+                    Spacer(Modifier.height(10.dp))
+                    Text("Bloom will open the official store listing. Your device handles compatibility checks and installation approval.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedApp = null; openStoreListing(app) }) { Text("Get app") }
+            },
+            dismissButton = {
+                TextButton(onClick = { selectedApp = null }) { Text("Close") }
+            },
+            containerColor = Color(0xFF171A24),
+            titleContentColor = Color.White,
+            textContentColor = Ink
+        )
     }
 }
 
