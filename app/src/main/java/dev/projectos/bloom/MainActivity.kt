@@ -6,6 +6,12 @@ import android.graphics.Canvas
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -61,7 +67,57 @@ private val Midnight = Color(0xFF090D18)
 private val Petal = Color(0xFFFFB8D2)
 private val Ink = Color(0xFFE9ECF6)
 private val Glass = Color(0x22FFFFFF)
+
 private const val RELEASES_URL = "https://github.com/projectosdev/bloom-tv-os/releases"
+private const val LATEST_RELEASE_API = "https://api.github.com/repos/projectosdev/bloom-tv-os/releases/latest"
+
+private data class BloomUpdate(
+    val versionName: String,
+    val notes: String,
+    val apkUrl: String,
+    val releaseUrl: String
+)
+
+private suspend fun checkForBloomUpdate(context: android.content.Context): BloomUpdate? =
+    withContext(Dispatchers.IO) {
+        var connection: HttpURLConnection? = null
+        try {
+            connection = (URL(LATEST_RELEASE_API).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("Accept", "application/vnd.github+json")
+                setRequestProperty("User-Agent", "Bloom-TV-OS-Lite")
+            }
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) return@withContext null
+            val release = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+            val tag = release.optString("tag_name")
+            val latestCode = tag.substringAfterLast('.').toLongOrNull() ?: return@withContext null
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val installedCode = if (Build.VERSION.SDK_INT >= 28) packageInfo.longVersionCode else packageInfo.versionCode.toLong()
+            if (latestCode <= installedCode) return@withContext null
+            val assets = release.optJSONArray("assets") ?: return@withContext null
+            var apkUrl: String? = null
+            for (index in 0 until assets.length()) {
+                val asset = assets.optJSONObject(index) ?: continue
+                if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
+                    apkUrl = asset.optString("browser_download_url").takeIf { it.startsWith("https://") }
+                    break
+                }
+            }
+            val download = apkUrl ?: return@withContext null
+            BloomUpdate(
+                versionName = tag.removePrefix("v"),
+                notes = release.optString("body").ifBlank { "Bug fixes and improvements." },
+                apkUrl = download,
+                releaseUrl = release.optString("html_url", RELEASES_URL)
+            )
+        } catch (_: Exception) {
+            null
+        } finally {
+            connection?.disconnect()
+        }
+    }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -204,6 +260,8 @@ private fun LauncherScreen() {
     var showStore by remember { mutableStateOf(false) }
     var showUpdates by remember { mutableStateOf(false) }
     var showSystemInfo by remember { mutableStateOf(false) }
+    var availableUpdate by remember { mutableStateOf<BloomUpdate?>(null) }
+    LaunchedEffect(Unit) { availableUpdate = checkForBloomUpdate(context) }
     val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     var animationsEnabled by remember { mutableStateOf(preferences.getBoolean("animations_enabled", true)) }
     var reduceMotion by remember { mutableStateOf(preferences.getBoolean("reduce_motion", false)) }
@@ -409,6 +467,38 @@ private fun LauncherScreen() {
                 }
             }
         }
+    }
+
+    availableUpdate?.let { update ->
+        AlertDialog(
+            onDismissRequest = { availableUpdate = null },
+            title = { Text("A Bloom update is ready") },
+            text = {
+                Column {
+                    Text("Bloom ${update.versionName} is available. You're running an older version.")
+                    if (update.notes.isNotBlank()) {
+                        Spacer(Modifier.height(10.dp))
+                        Text(update.notes.take(900), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    availableUpdate = null
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.apkUrl)))
+                    }.onFailure {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl)))
+                    }
+                }) { Text("Download update") }
+            },
+            dismissButton = {
+                TextButton(onClick = { availableUpdate = null }) { Text("Later") }
+            },
+            containerColor = Color(0xFF202236),
+            titleContentColor = Color.White,
+            textContentColor = Ink
+        )
     }
 }
 
