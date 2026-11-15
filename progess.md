@@ -1,82 +1,47 @@
 # Bloom TV OS Lite — Progress Log
 
-Last updated: 2026-11-14
+Last updated: 2026-11-15
 
 ## Current status
 
-**Stage:** Repository review and project planning  
-**Build status:** Not yet verified on a device  
-**Important:** This is an honest progress log. Planned features are not marked as completed.
+**Stage:** Android TV launcher preview  
+**Build status:** GitHub Actions successfully built the current pull-request head as a debug APK.  
+**Device status:** No physical Android TV / Google TV or emulator test has been recorded.
 
-## What has actually been done
+Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It is not replacement firmware or a complete standalone TV operating system.
 
-- Located and inspected the GitHub repository: `projectosdev/bloom-tv-os`.
-- Read the existing `README.md`.
-- Inspected the root Gradle configuration in `build.gradle.kts` and `settings.gradle.kts`.
-- Inspected the Android app module configuration in `app/build.gradle.kts`.
-- Confirmed the project is an Android application using Kotlin and Jetpack Compose.
-- Confirmed the README describes an early Android TV / Google TV launcher foundation, not a complete replacement TV operating system.
-- Confirmed the existing Gradle files are relevant to the Android TV launcher and should not be deleted just because the project is TV-focused.
+## Implemented
 
-## Existing project foundation
+- Native Android launcher entry points for Android TV / Google TV and the Android Home intent.
+- Installed-app discovery through Android launcher intents, with app launching delegated to Android.
+- Home screen, app library, Bloom Search, curated store listings and Android settings shortcuts.
+- Local Bloom profiles, accent themes, home layout preferences and a quick settings panel.
+- Bloom Ambient screen and animated focus feedback, with persistent motion preferences.
+- Settings, About and Software Update screens.
+- Software Update checks the project's GitHub Releases feed, compares dotted version numbers, accepts only APK links from this repository's release-download path, downloads the APK and hands it to Android's package installer.
+- Android installation approval remains user-controlled. Bloom does not silently install updates or replace device firmware.
+- GitHub Actions builds and uploads a debug APK artifact; the feature-branch push workflow also publishes preview APK releases.
 
-- Android application module: `:app`
-- Kotlin and Jetpack Compose
-- Android TV / Google TV launcher entry points are described in the README
-- App configuration currently uses namespace and application ID `dev.projectos.bloom`
-- The project is configured with compile SDK 35 and Java 17
+## Validation
 
-## Decisions
+- GitHub Actions run #73: **SUCCESS** for commit `750f7a5`.
+- GitHub Actions run #75: **SUCCESS** for commit `ad43d8f`.
+- GitHub Actions run #77: **SUCCESS** for current pull-request head `0c0d1dc`; the debug APK artifact was uploaded.
+- The earlier run #71 failed because a multiline Kotlin string in the profile screen was not escaped. That compile error was corrected in commit `750f7a5`.
+- A local build was not run because this working environment has no Gradle installation or Android SDK.
+- No Android TV emulator or physical-device test has been run.
 
-- Product name: **Bloom TV OS Lite**
-- Product type: TV-first operating system experience, designed for remote control.
-- Preserve the existing Android project as the starting point.
-- Do not delete or replace repository files without first checking their purpose.
-- Treat a true standalone TV OS / firmware build as a separate, much larger engineering step. The current Android launcher is not itself replacement firmware.
-- Bloom AI is a planned feature. A secure backend and separate API billing would be needed for OpenAI API integration.
+## Known limitations
 
-## Planned work — not completed yet
+- This is an installable Android launcher app, not a bootable TV OS image.
+- App availability, streaming-service support, DRM and store installation are controlled by Android, device certification, publishers and Google Play.
+- Preview APKs use debug signing. Hosted runner debug keys may differ between builds, so Android may require an older preview to be uninstalled before a newer one can be installed.
+- D-pad focus, Back behaviour, package discovery and update installation still need hands-on testing on target TV hardware.
 
-1. Inspect the full app source code and Android manifest.
-2. Build and run the current app to establish a working baseline.
-3. Review TV launcher registration and remote-control focus navigation.
-4. Implement the Bloom TV home screen and visual theme.
-5. Add the blossom-inspired startup experience where the platform permits it.
-6. Add core TV settings and app discovery / launching.
-7. Design Bloom AI integration with secure credential handling.
-8. Test on Android TV hardware or a suitable emulator.
-9. Assess a separate Raspberry Pi / Linux TV image only after the target hardware and platform are chosen.
+## Next steps
 
-## Notes and test results
-
-- No source-code changes or app features have been implemented by this progress-log update.
-- No successful build or hardware test has been confirmed yet.
-- The repository is being preserved; no files have been deleted.
-
-## Update format
-
-For each future update, record:
-- Date
-- Files changed
-- Features implemented
-- Build/test result
-- Known issues
-- Next steps
-
-## 2026-11-14 — Free local AI hand-off setup
-
-### Files added
-- `AGENTS.md` — shared repository rules for AI coding agents, with Bloom TV scope, safe code-review requirements, TV-specific engineering priorities, and bounded collaboration rules.
-- `CLAUDE.md` — Claude-specific entry point that defers to AGENTS.md and explains the manual hand-off process.
-- `CHAT.md` — starter append-only collaboration log for manually exchanging reviews between ChatGPT and Claude.
-
-### Workflow design
-- No GitHub Actions workflow, hosted bot, API key, or paid API usage is required for this manual approach.
-- The owner manually shares the same CHAT.md content and relevant source/diff with each assistant, then appends each response.
-- Collaboration stops when both agents mark the same proposal AGREED, or after two complete review rounds. Unresolved disagreements become OWNER DECISION REQUIRED.
-- The files explicitly state that CHAT.md does not create a live connection or automatic background conversation between the models.
-
-### Validation
-- All three files were successfully created in the repository's default branch.
-- No application source code was changed.
-- No Android build or device test was run as part of this documentation setup.
+1. Test directional navigation, focus visibility and Back behaviour on an Android TV / Google TV device or emulator.
+2. Test installed-app discovery and launching on more than one Android TV device.
+3. Test the release-check, download and Android installation-approval flow.
+4. Decide on a stable signing and release process before distributing builds beyond preview testing.
+5. Treat any future standalone firmware work as a separate platform project with a chosen target device.
