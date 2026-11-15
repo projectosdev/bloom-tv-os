@@ -632,6 +632,7 @@ private fun SettingsScreen(
     }
 }
 
+@Composable
 private fun SettingsRow(title: String, subtitle: String, trailing: String, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val background by animateColorAsState(
