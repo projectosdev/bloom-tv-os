@@ -323,6 +323,8 @@ private fun LauncherScreen() {
     }
     var animationsEnabled by remember { mutableStateOf(preferences.getBoolean("animations_enabled", true)) }
     var reduceMotion by remember { mutableStateOf(preferences.getBoolean("reduce_motion", false)) }
+    var showSystemCards by remember { mutableStateOf(preferences.getBoolean("show_system_cards", true)) }
+    var compactTiles by remember { mutableStateOf(preferences.getBoolean("compact_tiles", false)) }
     val motionAllowed = animationsEnabled && !reduceMotion
     val transitionDuration = if (motionAllowed) 260 else 0
 
@@ -460,14 +462,16 @@ private fun LauncherScreen() {
                     }
                 }
                 Spacer(Modifier.height(13.dp))
-                Text("AT A GLANCE", color = Petal, fontSize = 9.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SystemMetricCard("APP LIBRARY", installed.size.toString(), "Available on this device", Modifier.weight(1f))
-                    SystemMetricCard("BLOOM PROFILE", profileName.ifBlank { "Not set" }, "Personal space", Modifier.weight(1f))
-                    SystemMetricCard("SYSTEM", "Android ${Build.VERSION.RELEASE}", "${Build.MANUFACTURER} ${Build.MODEL}".take(34), Modifier.weight(1f))
+                if (showSystemCards) {
+                    Text("AT A GLANCE", color = Petal, fontSize = 9.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        SystemMetricCard("APP LIBRARY", installed.size.toString(), "Available on this device", Modifier.weight(1f))
+                        SystemMetricCard("BLOOM PROFILE", profileName.ifBlank { "Not set" }, "Personal space", Modifier.weight(1f))
+                        SystemMetricCard("SYSTEM", "Android ${Build.VERSION.RELEASE}", "${Build.MANUFACTURER} ${Build.MODEL}".take(34), Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(13.dp))
                 }
-                Spacer(Modifier.height(13.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("YOUR APPS", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(18.dp))
@@ -482,7 +486,7 @@ private fun LauncherScreen() {
                 } else {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         items(installed) { app ->
-                            AppTile(app, animationsEnabled && !reduceMotion) {
+                            AppTile(app, animationsEnabled && !reduceMotion, compactTiles) {
                                 runCatching { launchBloomApp(context, app) }
                             }
                         }
@@ -562,6 +566,16 @@ private fun LauncherScreen() {
                         reduceMotion = it
                         preferences.edit().putBoolean("reduce_motion", it).apply()
                     },
+                    showSystemCards = showSystemCards,
+                    onShowSystemCardsChange = {
+                        showSystemCards = it
+                        preferences.edit().putBoolean("show_system_cards", it).apply()
+                    },
+                    compactTiles = compactTiles,
+                    onCompactTilesChange = {
+                        compactTiles = it
+                        preferences.edit().putBoolean("compact_tiles", it).apply()
+                    },
                     onUpdatesClick = { showUpdates = true },
                     onProfileClick = { showSettings = false; showSignUp = true },
                     onSystemInfoClick = { showSystemInfo = true },
@@ -615,6 +629,10 @@ private fun SettingsScreen(
     onAnimationsChange: (Boolean) -> Unit,
     reduceMotion: Boolean,
     onReduceMotionChange: (Boolean) -> Unit,
+    showSystemCards: Boolean,
+    onShowSystemCardsChange: (Boolean) -> Unit,
+    compactTiles: Boolean,
+    onCompactTilesChange: (Boolean) -> Unit,
     onUpdatesClick: () -> Unit,
     onProfileClick: () -> Unit,
     onSystemInfoClick: () -> Unit,
@@ -648,6 +666,10 @@ private fun SettingsScreen(
                 SettingsSwitchRow("Bloom Motion", "Expressive transitions and focus effects.", animationsEnabled, onAnimationsChange)
                 Spacer(Modifier.height(12.dp))
                 SettingsSwitchRow("Reduce Motion", "Tone down movement and visual effects.", reduceMotion, onReduceMotionChange)
+                Spacer(Modifier.height(12.dp))
+                SettingsSwitchRow("System overview", "Show live device and profile cards on Home.", showSystemCards, onShowSystemCardsChange)
+                Spacer(Modifier.height(12.dp))
+                SettingsSwitchRow("Compact app tiles", "Fit more apps into the home carousel.", compactTiles, onCompactTilesChange)
             }
         }
         Spacer(Modifier.weight(1f))
@@ -947,7 +969,7 @@ private fun AppLibraryScreen(
 }
 
 @Composable
-private fun AppTile(app: TvApp, animationsEnabled: Boolean, launch: () -> Unit) {
+private fun AppTile(app: TvApp, animationsEnabled: Boolean, compact: Boolean, launch: () -> Unit) {
     val context = LocalContext.current
     val appIcon = remember(app.packageName) {
         runCatching {
@@ -973,7 +995,7 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, launch: () -> Unit) 
     )
     Surface(
         onClick = launch,
-        modifier = Modifier.width(210.dp).height(146.dp).scale(scale).onFocusChanged { focused = it.isFocused },
+        modifier = Modifier.width(if (compact) 174.dp else 210.dp).height(if (compact) 116.dp else 146.dp).scale(scale).onFocusChanged { focused = it.isFocused },
         color = tileColor,
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) Petal else Color.White.copy(alpha = 0.12f))
@@ -983,7 +1005,7 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, launch: () -> Unit) 
                 Image(
                     bitmap = appIcon.asImageBitmap(),
                     contentDescription = "${app.title} app icon",
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(if (compact) 38.dp else 48.dp)
                 )
             } else {
                 Box(
