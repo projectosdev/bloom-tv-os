@@ -42,7 +42,7 @@ class OwnerActivity : ComponentActivity() {
 }
 
 private enum class Page(val title: String) {
-    HOME("Overview"), LIBRARY("Control library"), DEVICES("Devices"), APPS("Applications"),
+    HOME("Command centre"), ANNOUNCEMENTS("Announcements"), LIBRARY("Control library"), DEVICES("Devices"), APPS("Applications"),
     UPDATES("Updates"), SECURITY("Security"), AUTOMATION("Automation"), SETTINGS("Owner settings")
 }
 private val categories = listOf(
@@ -72,22 +72,23 @@ private fun OwnerConsole() {
         Column(Modifier.width(225.dp).fillMaxHeight().background(Panel, RoundedCornerShape(22.dp)).padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("✿", color = accent, fontSize = 30.sp)
-                Column { Text("BLOOM", color = White, fontWeight = FontWeight.Bold, letterSpacing = 2.sp); Text("OWNER OS", color = accent, fontSize = 10.sp, letterSpacing = 2.sp) }
+                Column { Text("BLOOM", color = White, fontWeight = FontWeight.Bold, letterSpacing = 2.sp); Text("COMMAND CENTRE", color = accent, fontSize = 10.sp, letterSpacing = 2.sp) }
             }
             Spacer(Modifier.height(24.dp))
             Page.values().forEach { item -> NavItem(item.title, page == item, accent) { page = item } }
             Spacer(Modifier.weight(1f))
-            Text("OWNER EDITION", color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp)
-            Text("Independent preview · 1.0", color = Muted, fontSize = 11.sp)
+            Text("OWNER CONTROL", color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp)
+            Text("Bloom management console", color = Muted, fontSize = 11.sp)
         }
         Column(Modifier.weight(1f).fillMaxHeight()) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column { Text(page.title, color = White, fontSize = 28.sp, fontWeight = FontWeight.Bold); Text("Bloom Owner OS  /  Management console", color = Muted, fontSize = 12.sp) }
+                Column { Text(page.title, color = White, fontSize = 28.sp, fontWeight = FontWeight.Bold); Text("Bloom Command Centre  /  Platform administration", color = Muted, fontSize = 12.sp) }
                 Column(horizontalAlignment = Alignment.End) { Text(owner, color = White, fontWeight = FontWeight.SemiBold); Text("LOCAL OWNER SESSION", color = accent, fontSize = 9.sp) }
             }
             Spacer(Modifier.height(18.dp))
             when (page) {
                 Page.HOME -> Home(accent) { page = it }
+                Page.ANNOUNCEMENTS -> Announcements(accent)
                 Page.LIBRARY -> Library(query, { query = it }, category, { category = it }, accent)
                 Page.DEVICES -> Management("Device management", "This preview manages the Android device on which Owner OS is installed.", listOf("Device identity","Hardware summary","Android version","Display information","Network settings"), accent) { context.startActivity(Intent(Settings.ACTION_DEVICE_INFO_SETTINGS)) }
                 Page.APPS -> Management("Application management", "Manage applications using Android's supported settings.", listOf("Installed apps","Default launcher","App permissions","Special access","Storage usage"), accent) { context.startActivity(Intent(Settings.ACTION_APPLICATION_SETTINGS)) }
@@ -114,8 +115,8 @@ private fun Home(accent: Color, open: (Page) -> Unit) {
         Box(Modifier.fillMaxWidth().height(142.dp).background(Brush.linearGradient(listOf(Color(0xFF382A40), Color(0xFF17283A), Ink)), RoundedCornerShape(22.dp)).padding(22.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("YOUR SYSTEM. YOUR RULES.", color = accent, fontSize = 10.sp, letterSpacing = 2.sp)
-                Text("Welcome to Owner Control.", color = White, fontSize = 27.sp, fontWeight = FontWeight.Bold)
-                Text("A separate management environment for the Bloom ecosystem.", color = Muted, fontSize = 13.sp)
+                Text("Welcome to Bloom Command.", color = White, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                Text("Operate, communicate and manage the Bloom platform from one place.", color = Muted, fontSize = 13.sp)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -126,14 +127,57 @@ private fun Home(accent: Color, open: (Page) -> Unit) {
         }
         Text("MANAGEMENT CENTRE", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf(Page.LIBRARY, Page.DEVICES, Page.APPS, Page.UPDATES).forEach { p ->
+            listOf(Page.ANNOUNCEMENTS, Page.LIBRARY, Page.DEVICES, Page.UPDATES).forEach { p ->
                 Column(Modifier.weight(1f).height(90.dp).background(Panel, RoundedCornerShape(15.dp)).clickable { open(p) }.focusable().padding(13.dp)) {
                     Text(p.title, color = White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Text("Open management", color = accent, fontSize = 10.sp)
                 }
             }
         }
-        Text("The catalogue is a roadmap index. Planned entries are not live system controls.", color = Muted, fontSize = 11.sp)
+        Text("Owner controls are separated by capability. Local actions are clearly distinguished from server-wide operations.", color = Muted, fontSize = 11.sp)
+    }
+}
+
+
+@Composable
+private fun Announcements(accent: Color) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("bloom_owner_announcements", android.content.Context.MODE_PRIVATE) }
+    var title by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+    var audience by remember { mutableStateOf("All Bloom devices (draft)") }
+    var status by remember { mutableStateOf("") }
+    var saved by remember { mutableStateOf(prefs.getString("draft", "") ?: "") }
+    Column(Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Announcement studio", color = White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Compose and save owner announcements. Publishing to other devices requires a connected Bloom service backend; this preview saves drafts locally only.", color = Muted, fontSize = 12.sp)
+        Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(16.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("NEW ANNOUNCEMENT", color = accent, fontSize = 10.sp, letterSpacing = 2.sp)
+            BasicTextField(title, { title = it }, singleLine = true, modifier = Modifier.fillMaxWidth().background(Raised, RoundedCornerShape(9.dp)).padding(13.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White, fontSize = 14.sp), decorationBox = { inner -> if(title.isEmpty()) Text("Announcement title", color = Muted); inner() })
+            BasicTextField(message, { message = it }, modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp).background(Raised, RoundedCornerShape(9.dp)).padding(13.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White, fontSize = 13.sp), decorationBox = { inner -> if(message.isEmpty()) Text("Write your message…", color = Muted); inner() })
+            Text("Audience: $audience", color = Muted, fontSize = 11.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { audience = "All Bloom devices (draft)" }, colors = ButtonDefaults.buttonColors(containerColor = Raised)) { Text("All devices", color = White) }
+                Button(onClick = { audience = "Selected devices (draft)" }, colors = ButtonDefaults.buttonColors(containerColor = Raised)) { Text("Selected", color = White) }
+            }
+            Button(onClick = {
+                if (title.isBlank() || message.isBlank()) status = "Add a title and message before saving."
+                else {
+                    saved = "$title\n$message\nAudience: $audience"
+                    prefs.edit().putString("draft", saved).apply()
+                    status = "Draft saved on this device. It has not been sent to other devices."
+                }
+            }, colors = ButtonDefaults.buttonColors(containerColor = accent)) { Text("Save announcement draft", color = Ink) }
+            if (status.isNotBlank()) Text(status, color = accent, fontSize = 11.sp)
+        }
+        if (saved.isNotBlank()) {
+            Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(16.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("LATEST SAVED DRAFT", color = accent, fontSize = 10.sp, letterSpacing = 2.sp)
+                Text(saved, color = White, fontSize = 13.sp)
+                Text("LOCAL DRAFT · NOT PUBLISHED", color = Color(0xFFEBC68E), fontSize = 10.sp)
+                TextButton(onClick = { prefs.edit().remove("draft").apply(); saved = ""; status = "Draft deleted." }) { Text("Delete draft", color = Muted) }
+            }
+        }
     }
 }
 
