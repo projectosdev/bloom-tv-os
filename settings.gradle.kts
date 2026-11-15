@@ -6,4 +6,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "BloomTVOSLite"
-include(":app", ":owner")
+include(":app", ":owner", ":testos")
