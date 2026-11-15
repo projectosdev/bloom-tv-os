@@ -48,3 +48,10 @@ The current Android application ID is `dev.projectos.bloom`. Keep this ID stable
 ## Development direction
 
 The visual direction is an original premium television interface: spacious layouts, restrained glass-like surfaces, readable typography, cinematic colour, clear focus states and controller-friendly navigation. It takes broad inspiration from polished TV interfaces without copying proprietary branding or assets.
+
+
+## Bloom Owner OS (separate edition)
+
+A separate Android application module named `:owner` has its own application ID (`dev.projectos.bloom.owner`), launcher activity, UI, and preferences. It installs separately and does not replace or modify Bloom TV OS Lite. The preview contains an owner dashboard, local Android settings entry points, owner preferences, and a searchable 1,300-entry capability roadmap. Entries labelled PLANNED are roadmap items, not implemented system controls. Remote fleet management, automatic deployment, and privileged OS administration are not available in this preview.
+
+The Android build workflow builds both app modules. Download the `bloom-tv-os-lite-debug` artifact and inspect its APK outputs for both editions.
