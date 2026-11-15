@@ -139,6 +139,7 @@ private fun LauncherScreen() {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
     var showUpdates by remember { mutableStateOf(false) }
+    var showSystemInfo by remember { mutableStateOf(false) }
     val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     var animationsEnabled by remember { mutableStateOf(preferences.getBoolean("animations_enabled", true)) }
     var reduceMotion by remember { mutableStateOf(preferences.getBoolean("reduce_motion", false)) }
@@ -146,7 +147,11 @@ private fun LauncherScreen() {
     val transitionDuration = if (motionAllowed) 260 else 0
 
     BackHandler(enabled = showSettings) {
-        if (showUpdates) showUpdates = false else showSettings = false
+        when {
+            showUpdates -> showUpdates = false
+            showSystemInfo -> showSystemInfo = false
+            else -> showSettings = false
+        }
     }
 
     var installed by remember { mutableStateOf(discoverTvApps(context)) }
@@ -228,9 +233,10 @@ private fun LauncherScreen() {
             enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 25 else 0 }, animationSpec = tween(transitionDuration)),
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) it / 35 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
-            if (showUpdates) {
-                UpdateScreen(onBack = { showUpdates = false })
-            } else {
+            when {
+                showUpdates -> UpdateScreen(onBack = { showUpdates = false })
+                showSystemInfo -> SystemInfoScreen(onBack = { showSystemInfo = false })
+                else -> {
                 SettingsScreen(
                     animationsEnabled = animationsEnabled,
                     onAnimationsChange = {
@@ -243,8 +249,10 @@ private fun LauncherScreen() {
                         preferences.edit().putBoolean("reduce_motion", it).apply()
                     },
                     onUpdatesClick = { showUpdates = true },
+                    onSystemInfoClick = { showSystemInfo = true },
                     onBack = { showSettings = false }
                 )
+                }
             }
         }
     }
@@ -257,6 +265,7 @@ private fun SettingsScreen(
     reduceMotion: Boolean,
     onReduceMotionChange: (Boolean) -> Unit,
     onUpdatesClick: () -> Unit,
+    onSystemInfoClick: () -> Unit,
     onBack: () -> Unit
 ) {
     Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 30.dp)) {
@@ -280,6 +289,13 @@ private fun SettingsScreen(
             subtitle = "Version 0.1.0  •  View release notes and available builds",
             trailing = "›",
             onClick = onUpdatesClick
+        )
+        Spacer(Modifier.height(10.dp))
+        SettingsRow(
+            title = "About this device",
+            subtitle = "View Bloom version, device model and Android details",
+            trailing = "›",
+            onClick = onSystemInfoClick
         )
         Spacer(Modifier.height(26.dp))
         Text("APPEARANCE & MOTION", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
