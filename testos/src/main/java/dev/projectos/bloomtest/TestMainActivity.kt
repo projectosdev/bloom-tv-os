@@ -3,9 +3,16 @@ package dev.projectos.bloomtest
 import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.media.AudioTrack
+import android.media.AudioFormat
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,6 +29,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +59,7 @@ class TestMainActivity : ComponentActivity() {
                 var status by remember { mutableStateOf("TEST ENVIRONMENT READY") }
                 var soundStatus by remember { mutableStateOf("Sound preview ready") }
                 val sections = listOf("Home", "Apps", "Media", "Games", "Settings", "Network", "Accessibility", "About")
+                LaunchedEffect(alertVisible) { if (alertVisible) playBloomWarningSound() }
                 val mode = when { restricted -> "RESTRICTED"; maintenance -> "MAINTENANCE"; alertVisible -> "ALERT"; else -> "NORMAL" }
 
                 Box(Modifier.fillMaxSize().background(BG)) {
@@ -67,10 +76,76 @@ class TestMainActivity : ComponentActivity() {
                         }
                         Spacer(Modifier.height(20.dp))
 
-                        if (restricted || maintenance || alertVisible) {
-                            val headline = when { restricted -> "ACCESS RESTRICTED"; maintenance -> "WE'LL BE RIGHT BACK"; else -> "PRIORITY NOTICE" }
-                            val body = when { restricted -> "This test device is temporarily restricted"; maintenance -> "Bloom is undergoing maintenance"; else -> alertTitle }
-                            val detail = when { restricted -> "A review is required. This is a local test simulation."; maintenance -> "The test environment is temporarily unavailable."; else -> alertMessage }
+                        if (alertVisible) {
+                            val pulse = rememberInfiniteTransition(label = "alertPulse")
+                            val glow by pulse.animateFloat(
+                                initialValue = 0.82f, targetValue = 1.08f,
+                                animationSpec = infiniteRepeatable(tween(720, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                                label = "alertGlow"
+                            )
+                            val sweep by pulse.animateFloat(
+                                initialValue = -1f, targetValue = 1f,
+                                animationSpec = infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Restart),
+                                label = "alertSweep"
+                            )
+                            Box(
+                                Modifier.fillMaxSize().background(
+                                    Brush.verticalGradient(listOf(Color(0xFFFF242D), Color(0xFFB00012), Color(0xFF5C0010)))
+                                )
+                            ) {
+                                Box(
+                                    Modifier.fillMaxWidth().height(10.dp).align(Alignment.TopCenter)
+                                        .background(Color.White.copy(alpha = .16f))
+                                )
+                                Box(
+                                    Modifier.fillMaxWidth(.55f).fillMaxHeight()
+                                        .align(Alignment.CenterStart)
+                                        .offset(x = (sweep * 520).dp)
+                                        .background(Brush.horizontalGradient(listOf(Color.Transparent, Color.White.copy(alpha = .10f), Color.Transparent)))
+                                )
+                                Column(
+                                    Modifier.fillMaxSize().padding(30.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text("BLOOM  •  TEST ALERT", color = Color.White.copy(alpha = .82f), fontSize = 12.sp, letterSpacing = 4.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.height(24.dp))
+                                    Box(
+                                        Modifier.size(150.dp).scale(glow)
+                                            .background(Color.White.copy(alpha = .13f), RoundedCornerShape(38.dp))
+                                            .border(2.dp, Color.White.copy(alpha = .7f), RoundedCornerShape(38.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        AnimatedContent(
+                                            targetState = alertVisible,
+                                            transitionSpec = { (fadeIn(tween(350)) togetherWith fadeOut(tween(220))) },
+                                            label = "bloomToWarning"
+                                        ) { active ->
+                                            Text(if (active) "⚠" else "✿", color = Color.White, fontSize = 92.sp, fontWeight = FontWeight.Black)
+                                        }
+                                    }
+                                    Spacer(Modifier.height(28.dp))
+                                    Text("WARNING", color = Color.White, fontSize = 17.sp, letterSpacing = 7.sp, fontWeight = FontWeight.Black)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(alertTitle.uppercase(), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(alertMessage, color = Color.White.copy(alpha = .94f), fontSize = 16.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                    Spacer(Modifier.height(24.dp))
+                                    Text("PLEASE PAY ATTENTION", color = Color.White, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.height(30.dp))
+                                    Button(
+                                        onClick = { alertVisible = false; status = "NORMAL TEST MODE" },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF9C0010)),
+                                        contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)
+                                    ) { Text("DISMISS TEST ALERT", fontWeight = FontWeight.Black, letterSpacing = 1.sp) }
+                                    Spacer(Modifier.height(12.dp))
+                                    Text("SIMULATION ONLY · THIS DEVICE", color = Color.White.copy(alpha = .72f), fontSize = 9.sp, letterSpacing = 2.sp)
+                                }
+                            }
+                        } else if (restricted || maintenance) {
+                            val headline = if (restricted) "ACCESS RESTRICTED" else "WE'LL BE RIGHT BACK"
+                            val body = if (restricted) "This test device is temporarily restricted" else "Bloom is undergoing maintenance"
+                            val detail = if (restricted) "A review is required. This is a local test simulation." else "The test environment is temporarily unavailable."
                             Box(Modifier.fillMaxWidth().weight(1f).background(Brush.linearGradient(listOf(if (restricted) Color(0xFF462B38) else Color(0xFF304E76), BG)), RoundedCornerShape(24.dp)).padding(28.dp), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Text(headline, color = if (restricted) RED else BLUE, fontSize = 11.sp, letterSpacing = 3.sp)
@@ -82,8 +157,7 @@ class TestMainActivity : ComponentActivity() {
                                         OutlinedButton(onClick = { restricted = false; maintenance = false; alertVisible = false; status = "NORMAL TEST MODE" }) { Text("Restore normal screen") }
                                     }
                                 }
-                            }
-                        } else {
+                            }{
                             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                                 Column(Modifier.weight(1.3f)) {
                                     Text("Your screen. Your Bloom.", color = TEXT, fontSize = 32.sp, fontWeight = FontWeight.Bold)
@@ -143,9 +217,9 @@ class TestMainActivity : ComponentActivity() {
                             }
                             Column(Modifier.weight(1f).background(CARD, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 Text("SOUND & RECOVERY", color = BLUE, fontSize = 9.sp, letterSpacing = 1.5.sp)
-                                Text("Play the original Bloom test warning tone on this device.", color = MUTED, fontSize = 10.sp)
+                                Text("Play the original Bloom warning sweep on this device.", color = MUTED, fontSize = 10.sp)
                                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    SmallButton("Play test tone") { playTestTone(); soundStatus = "Played local Bloom test tone" }
+                                    SmallButton("Play warning sound") { playBloomWarningSound(); soundStatus = "Played Bloom warning sound" }
                                     SmallButton("Restore normal") { restricted = false; maintenance = false; alertVisible = false; prefs.edit().putBoolean("restricted", false).apply(); status = "NORMAL TEST MODE" }
                                 }
                                 Text(soundStatus, color = GREEN, fontSize = 9.sp)
@@ -192,6 +266,37 @@ private fun sectionDescription(section: String): String = when (section) {
         if (value.isEmpty()) Text(hint, color = MUTED, fontSize = 10.sp)
         inner()
     })
+}
+
+private fun playBloomWarningSound() {
+    try {
+        val sampleRate = 22050
+        val durationSeconds = 3
+        val samples = sampleRate * durationSeconds
+        val data = ShortArray(samples)
+        for (i in 0 until samples) {
+            val t = i.toDouble() / sampleRate
+            val phase = (t % 1.0)
+            val active = phase < 0.78
+            val frequency = 620.0 + 520.0 * (0.5 - 0.5 * kotlin.math.cos(2.0 * Math.PI * (t % 1.2) / 1.2))
+            val envelope = if (active) kotlin.math.min(1.0, phase * 18.0) * kotlin.math.min(1.0, (0.78 - phase) * 18.0) else 0.0
+            data[i] = (kotlin.math.sin(2.0 * Math.PI * frequency * t) * envelope * 10500.0).toInt().toShort()
+        }
+        val track = AudioTrack(
+            AudioManager.STREAM_ALARM, sampleRate,
+            AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT,
+            data.size * 2, AudioTrack.MODE_STATIC
+        )
+        track.write(data, 0, data.size)
+        track.setNotificationMarkerPosition(samples)
+        track.setPlaybackPositionUpdateListener(object : AudioTrack.OnPlaybackPositionUpdateListener {
+            override fun onMarkerReached(player: AudioTrack) { player.release() }
+            override fun onPeriodicNotification(player: AudioTrack) { }
+        })
+        track.play()
+    } catch (_: Exception) {
+        playTestTone()
+    }
 }
 
 private fun playTestTone() {
