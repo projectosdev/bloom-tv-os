@@ -51,6 +51,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val Midnight = Color(0xFF090D18)
 private val Petal = Color(0xFFFFB8D2)
@@ -159,6 +162,15 @@ private fun LauncherScreen() {
     }
 
     var installed by remember { mutableStateOf(discoverTvApps(context)) }
+    var clockText by remember {
+        mutableStateOf(SimpleDateFormat("EEE, d MMM  •  HH:mm", Locale.getDefault()).format(Date()))
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            clockText = SimpleDateFormat("EEE, d MMM  •  HH:mm", Locale.getDefault()).format(Date())
+            delay(30_000)
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
@@ -178,7 +190,7 @@ private fun LauncherScreen() {
                     ) {
                         Icon(Icons.Rounded.Wifi, null, tint = Ink, modifier = Modifier.size(17.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("System ready", color = Ink, fontSize = 12.sp)
+                        Text(clockText, color = Ink, fontSize = 12.sp)
                     }
                     Spacer(Modifier.width(14.dp))
                     Surface(
