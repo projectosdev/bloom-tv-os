@@ -1,305 +1,85 @@
 package dev.projectos.bloomowner
-
-import android.content.Intent
-import android.media.RingtoneManager
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.json.JSONArray
+import org.json.JSONObject
 
-private val Ink = Color(0xFF090D16)
-private val Panel = Color(0xFF151D2B)
-private val Raised = Color(0xFF202B3D)
-private val White = Color(0xFFF5F3F7)
-private val Muted = Color(0xFFAAB5C5)
-private val Pink = Color(0xFFE8B7CF)
-
-class OwnerActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent { MaterialTheme(colorScheme = darkColorScheme(primary = Pink, background = Ink, surface = Panel)) { OwnerConsole() } }
-    }
+private val bg=Color(0xFF080D16); private val panel=Color(0xFF142033); private val raised=Color(0xFF203047)
+private val white=Color(0xFFF4F6FA); private val muted=Color(0xFFAAB7C8); private val accent=Color(0xFFB8D8F2); private val warn=Color(0xFFFFB5A8)
+class OwnerActivity:ComponentActivity(){override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);setContent{MaterialTheme(colorScheme=darkColorScheme(primary=accent,background=bg,surface=panel)){Console()}}}}
+private enum class P(val label:String,val group:String){HOME("Overview","COMMAND"),GLOBAL("Global operations","COMMAND"),FLEET("Test device fleet","TEST OS"),BROADCAST("Broadcast studio","TEST OS"),ALERT("Emergency alerts","TEST OS"),ENFORCE("Trust & enforcement","SAFETY"),POLICY("App & policy control","PLATFORM"),RELEASE("Release manager","PLATFORM"),DIAG("Diagnostics","PLATFORM"),AUDIT("Command history","SECURITY"),SETTINGS("Owner settings","SECURITY")}
+private data class Cmd(val time:String,val title:String,val scope:String,val status:String)
+private fun read(p:android.content.SharedPreferences):List<Cmd>{val a=JSONArray(p.getString("queue","[]")?:"[]");return (0 until a.length()).map{val o=a.getJSONObject(it);Cmd(o.optString("time"),o.optString("title"),o.optString("scope"),o.optString("status"))}}
+private fun add(p:android.content.SharedPreferences,title:String,scope:String){val a=JSONArray();(listOf(Cmd(java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.UK).format(java.util.Date()),title,scope,"WAITING FOR SECURE BACKEND"))+read(p).take(78)).forEach{a.put(JSONObject().put("time",it.time).put("title",it.title).put("scope",it.scope).put("status",it.status))};p.edit().putString("queue",a.toString()).apply()}
+@Composable private fun Console(){
+ val ctx=androidx.compose.ui.platform.LocalContext.current;val prefs=remember{ctx.getSharedPreferences("bloom_owner_console",0)}
+ var page by remember{mutableStateOf(P.HOME)};var revision by remember{mutableIntStateOf(0)};var name by remember{mutableStateOf(prefs.getString("owner","Owner")?:"Owner")}
+ BackHandler(page!=P.HOME){page=P.HOME}
+ Row(Modifier.fillMaxSize().background(bg).padding(15.dp),horizontalArrangement=Arrangement.spacedBy(14.dp)){
+  Column(Modifier.width(220.dp).fillMaxHeight().background(panel,RoundedCornerShape(20.dp)).padding(13.dp)){
+   Text("✿ BLOOM",color=accent,fontSize=21.sp,fontWeight=FontWeight.Black,letterSpacing=2.sp);Text("COMMAND CENTRE",color=muted,fontSize=9.sp,letterSpacing=2.sp);Spacer(Modifier.height(18.dp))
+   P.values().groupBy{it.group}.forEach{(g,items)->Text(g,color=accent,fontSize=9.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(start=8.dp,top=10.dp,bottom=5.dp));items.forEach{s->Text(s.label,color=if(page==s)accent else white,fontSize=12.sp,fontWeight=if(page==s)FontWeight.Bold else FontWeight.Normal,modifier=Modifier.fillMaxWidth().background(if(page==s)accent.copy(alpha=.13f)else Color.Transparent,RoundedCornerShape(8.dp)).clickable{page=s}.padding(10.dp))}}
+   Spacer(Modifier.weight(1f));Text("PRIVATE OWNER CONSOLE",color=Color(0xFF9ED7B2),fontSize=9.sp);Text("TEST ENVIRONMENT ONLY",color=muted,fontSize=9.sp)
+  }
+  Column(Modifier.weight(1f).fillMaxHeight()){
+   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Column{Text(page.label,color=white,fontSize=26.sp,fontWeight=FontWeight.Bold);Text("Bloom platform / "+page.group.lowercase()+" workspace",color=muted,fontSize=11.sp)};Text(name+" · OWNER",color=accent,fontSize=11.sp)}
+   Spacer(Modifier.height(13.dp))
+   when(page){
+    P.HOME->Home(prefs,{page=it},revision)
+    P.GLOBAL->Global(prefs){revision++}
+    P.FLEET->Fleet(prefs){revision++}
+    P.BROADCAST->Broadcast(prefs){revision++}
+    P.ALERT->Alerts(prefs){revision++}
+    P.ENFORCE->Enforcement(prefs){revision++}
+    P.POLICY->Policy(prefs){revision++}
+    P.RELEASE->ReleasePage()
+    P.DIAG->Diagnostics()
+    P.AUDIT->Audit(prefs,revision){prefs.edit().remove("queue").apply();revision++}
+    P.SETTINGS->Settings(name){name=it;prefs.edit().putString("owner",it).apply()}
+   }
+  }
+ }
 }
-
-private enum class Page(val title: String) {
-    HOME("Command centre"), ANNOUNCEMENTS("Announcements"), EMERGENCY("Emergency alerts"), LIBRARY("Control library"), DEVICES("Devices"), APPS("Applications"),
-    UPDATES("Updates"), SECURITY("Security"), AUTOMATION("Automation"), SETTINGS("Owner settings")
-}
-private val categories = listOf(
-"Dashboard & overview","Device fleet","Device identity","Hardware information","System health","Performance","Memory management","Storage management","Network management","Wi-Fi controls","Bluetooth controls","Display controls","Audio controls","Remote controls","Input devices","App catalogue","App installation","App permissions","App updates","App launch rules","Home screen","Widgets","Themes & appearance","Wallpapers","Typography","Accessibility","Profiles","Family settings","Privacy","Security centre","Authentication","Owner access","Backup & restore","Diagnostics","Error reports","System logs","Notifications","Schedules","Automation rules","Power management","Startup behaviour","Restart tools","Update channels","Release management","Compatibility","Developer tools","Remote administration","Audit history","Data management","Help & support"
-)
-private val actions = listOf(
-"View status","Configure defaults","Enable or disable","Set policy","Review activity","Inspect details","Create profile","Edit profile","Delete profile","Import configuration","Export configuration","Reset defaults","Set permissions","Review permissions","Set notifications","Configure schedules","Add exception","Remove exception","Run diagnostic","View history","Compare versions","Set limits","Set alerts","Review recommendations","Manage access","Open advanced options"
-)
-private data class Entry(val id: Int, val category: String, val title: String)
-private val catalogue = categories.flatMapIndexed { c, category ->
-    actions.mapIndexed { a, action -> Entry(c * actions.size + a + 1, category, "$action · ${category.lowercase()}") }
-}
-
-@Composable
-private fun OwnerConsole() {
-    val context = LocalContext.current
-    var page by remember { mutableStateOf(Page.HOME) }
-    var query by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("All categories") }
-    var owner by remember { mutableStateOf("Owner") }
-    var accentIndex by remember { mutableIntStateOf(0) }
-    var reduceMotion by remember { mutableStateOf(false) }
-    val accents = listOf(Pink, Color(0xFF9FC7F2), Color(0xFFB8DAB5), Color(0xFFEBC68E))
-    val accent = accents[accentIndex]
-    BackHandler(page != Page.HOME) { page = Page.HOME; query = "" }
-    Row(Modifier.fillMaxSize().background(Ink).padding(22.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        Column(Modifier.width(225.dp).fillMaxHeight().background(Panel, RoundedCornerShape(22.dp)).padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("✿", color = accent, fontSize = 30.sp)
-                Column { Text("BLOOM", color = White, fontWeight = FontWeight.Bold, letterSpacing = 2.sp); Text("COMMAND CENTRE", color = accent, fontSize = 10.sp, letterSpacing = 2.sp) }
-            }
-            Spacer(Modifier.height(24.dp))
-            Page.values().forEach { item -> NavItem(item.title, page == item, accent) { page = item } }
-            Spacer(Modifier.weight(1f))
-            Text("OWNER CONTROL", color = Muted, fontSize = 10.sp, letterSpacing = 1.5.sp)
-            Text("Bloom management console", color = Muted, fontSize = 11.sp)
-        }
-        Column(Modifier.weight(1f).fillMaxHeight()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column { Text(page.title, color = White, fontSize = 28.sp, fontWeight = FontWeight.Bold); Text("Bloom Command Centre  /  Platform administration", color = Muted, fontSize = 12.sp) }
-                Column(horizontalAlignment = Alignment.End) { Text(owner, color = White, fontWeight = FontWeight.SemiBold); Text("LOCAL OWNER SESSION", color = accent, fontSize = 9.sp) }
-            }
-            Spacer(Modifier.height(18.dp))
-            when (page) {
-                Page.HOME -> Home(accent) { page = it }
-                Page.ANNOUNCEMENTS -> Announcements(accent)
-                Page.EMERGENCY -> EmergencyAlerts(accent)
-                Page.LIBRARY -> Library(query, { query = it }, category, { category = it }, accent)
-                Page.DEVICES -> Management("Device management", "This preview manages the Android device on which Owner OS is installed.", listOf("Device identity","Hardware summary","Android version","Display information","Network settings"), accent) { context.startActivity(Intent(Settings.ACTION_DEVICE_INFO_SETTINGS)) }
-                Page.APPS -> Management("Application management", "Manage applications using Android's supported settings.", listOf("Installed apps","Default launcher","App permissions","Special access","Storage usage"), accent) { context.startActivity(Intent(Settings.ACTION_APPLICATION_SETTINGS)) }
-                Page.UPDATES -> Management("Release management", "Preview releases are published through GitHub. Automatic installation and fleet rollout are not enabled.", listOf("Owner OS release channel","Build history","Release notes","Update policy","Rollback planning"), accent) { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/projectosdev/bloom-tv-os/actions"))) }
-                Page.SECURITY -> Management("Security centre", "Shortcuts to Android's own security and permission controls.", listOf("App permissions","Screen lock","Privacy dashboard","Unknown app installs","Security updates"), accent) { context.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) }
-                Page.AUTOMATION -> Management("Automation studio", "A planned module. Rules will only run after explicit configuration and permission.", listOf("Schedules","Startup routines","App launch routines","Quiet hours","Automation history"), accent) {}
-                Page.SETTINGS -> Settings(owner, { owner = it }, accentIndex, { accentIndex = it }, reduceMotion, { reduceMotion = it }, accent)
-            }
-        }
-    }
-}
-
-@Composable
-private fun NavItem(label: String, selected: Boolean, accent: Color, click: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp).background(if (selected) accent.copy(alpha=.14f) else Color.Transparent, RoundedCornerShape(11.dp)).border(if(focused) 1.dp else 0.dp, if(focused) accent else Color.Transparent, RoundedCornerShape(11.dp)).onFocusChanged { focused = it.isFocused }.clickable { click() }.focusable().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = if(selected) accent else White, fontSize = 13.sp, fontWeight = if(selected) FontWeight.Bold else FontWeight.Medium)
-    }
-}
-
-@Composable
-private fun Home(accent: Color, open: (Page) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Box(Modifier.fillMaxWidth().height(142.dp).background(Brush.linearGradient(listOf(Color(0xFF382A40), Color(0xFF17283A), Ink)), RoundedCornerShape(22.dp)).padding(22.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("YOUR SYSTEM. YOUR RULES.", color = accent, fontSize = 10.sp, letterSpacing = 2.sp)
-                Text("Welcome to Bloom Command.", color = White, fontSize = 27.sp, fontWeight = FontWeight.Bold)
-                Text("Operate, communicate and manage the Bloom platform from one place.", color = Muted, fontSize = 13.sp)
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Metric("CONTROL CATALOGUE", "${catalogue.size}+", "roadmap entries", accent, Modifier.weight(1f))
-            Metric("CONNECTED DEVICES", "1", "this local device", accent, Modifier.weight(1f))
-            Metric("RELEASE CHANNEL", "PREVIEW", "manual updates", accent, Modifier.weight(1f))
-            Metric("OWNER ACCESS", "LOCAL", "this installation", accent, Modifier.weight(1f))
-        }
-        Text("MANAGEMENT CENTRE", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf(Page.EMERGENCY, Page.ANNOUNCEMENTS, Page.LIBRARY, Page.UPDATES).forEach { p ->
-                Column(Modifier.weight(1f).height(90.dp).background(Panel, RoundedCornerShape(15.dp)).clickable { open(p) }.focusable().padding(13.dp)) {
-                    Text(p.title, color = White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Text("Open management", color = accent, fontSize = 10.sp)
-                }
-            }
-        }
-        Text("Owner controls are separated by capability. Local actions are clearly distinguished from server-wide operations.", color = Muted, fontSize = 11.sp)
-    }
-}
-
-
-@Composable
-private fun Announcements(accent: Color) {
-    val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("bloom_owner_announcements", android.content.Context.MODE_PRIVATE) }
-    var title by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-    var audience by remember { mutableStateOf("All Bloom devices (draft)") }
-    var status by remember { mutableStateOf("") }
-    var saved by remember { mutableStateOf(prefs.getString("draft", "") ?: "") }
-    Column(Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Announcement studio", color = White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("Compose and save owner announcements. Publishing to other devices requires a connected Bloom service backend; this preview saves drafts locally only.", color = Muted, fontSize = 12.sp)
-        Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(16.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("NEW ANNOUNCEMENT", color = accent, fontSize = 10.sp, letterSpacing = 2.sp)
-            BasicTextField(title, { title = it }, singleLine = true, modifier = Modifier.fillMaxWidth().background(Raised, RoundedCornerShape(9.dp)).padding(13.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White, fontSize = 14.sp), decorationBox = { inner -> if(title.isEmpty()) Text("Announcement title", color = Muted); inner() })
-            BasicTextField(message, { message = it }, modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp).background(Raised, RoundedCornerShape(9.dp)).padding(13.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White, fontSize = 13.sp), decorationBox = { inner -> if(message.isEmpty()) Text("Write your message…", color = Muted); inner() })
-            Text("Audience: $audience", color = Muted, fontSize = 11.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { audience = "All Bloom devices (draft)" }, colors = ButtonDefaults.buttonColors(containerColor = Raised)) { Text("All devices", color = White) }
-                Button(onClick = { audience = "Selected devices (draft)" }, colors = ButtonDefaults.buttonColors(containerColor = Raised)) { Text("Selected", color = White) }
-            }
-            Button(onClick = {
-                if (title.isBlank() || message.isBlank()) status = "Add a title and message before saving."
-                else {
-                    saved = "$title\n$message\nAudience: $audience"
-                    prefs.edit().putString("draft", saved).apply()
-                    status = "Draft saved on this device. It has not been sent to other devices."
-                }
-            }, colors = ButtonDefaults.buttonColors(containerColor = accent)) { Text("Save announcement draft", color = Ink) }
-            if (status.isNotBlank()) Text(status, color = accent, fontSize = 11.sp)
-        }
-        if (saved.isNotBlank()) {
-            Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(16.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("LATEST SAVED DRAFT", color = accent, fontSize = 10.sp, letterSpacing = 2.sp)
-                Text(saved, color = White, fontSize = 13.sp)
-                Text("LOCAL DRAFT · NOT PUBLISHED", color = Color(0xFFEBC68E), fontSize = 10.sp)
-                TextButton(onClick = { prefs.edit().remove("draft").apply(); saved = ""; status = "Draft deleted." }) { Text("Delete draft", color = Muted) }
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun EmergencyAlerts(accent: Color) {
-    val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("bloom_owner_emergency_alerts", android.content.Context.MODE_PRIVATE) }
-    var title by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-    var soundEnabled by remember { mutableStateOf(true) }
-    var status by remember { mutableStateOf("") }
-    var saved by remember { mutableStateOf(prefs.getString("draft", "") ?: "") }
-    Column(Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Emergency alert centre", color = White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("Prepare a high-priority Bloom service notice for enrolled devices. This preview stores drafts locally; it does not broadcast alerts or contact emergency services.", color = Muted, fontSize = 12.sp)
-        Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(16.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("NEW PRIORITY ALERT", color = Color(0xFFFF9A91), fontSize = 10.sp, letterSpacing = 2.sp)
-            BasicTextField(title, { title = it }, singleLine = true, modifier = Modifier.fillMaxWidth().background(Raised, RoundedCornerShape(9.dp)).padding(13.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White, fontSize = 14.sp), decorationBox = { inner -> if(title.isEmpty()) Text("Alert heading", color = Muted); inner() })
-            BasicTextField(message, { message = it }, modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp).background(Raised, RoundedCornerShape(9.dp)).padding(13.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White, fontSize = 13.sp), decorationBox = { inner -> if(message.isEmpty()) Text("Explain what Bloom users need to know…", color = Muted); inner() })
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Play warning sound", color = White, fontSize = 13.sp)
-                    Text("Uses the device's normal notification sound when an alert is received.", color = Muted, fontSize = 10.sp)
-                }
-                Switch(soundEnabled, { soundEnabled = it })
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
-                    try {
-                        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                        val ringtone = RingtoneManager.getRingtone(context, uri)
-                        if (ringtone != null) { ringtone.play(); status = "Local sound preview played on this device." }
-                        else status = "No default notification sound is configured."
-                    } catch (e: Exception) { status = "Sound preview unavailable on this device." }
-                }, colors = ButtonDefaults.buttonColors(containerColor = Raised)) { Text("Preview warning sound", color = White) }
-                Button(onClick = {
-                    if (title.isBlank() || message.isBlank()) status = "Add an alert heading and message first."
-                    else {
-                        saved = title + "\n" + message + "\nWarning sound: " + (if (soundEnabled) "enabled" else "disabled")
-                        prefs.edit().putString("draft", saved).putBoolean("sound_enabled", soundEnabled).apply()
-                        status = "Alert draft saved locally. No devices have been alerted."
-                    }
-                }, colors = ButtonDefaults.buttonColors(containerColor = accent)) { Text("Save alert draft", color = Ink) }
-            }
-            if (status.isNotBlank()) Text(status, color = accent, fontSize = 11.sp)
-        }
-        if (saved.isNotBlank()) {
-            Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(16.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("LATEST ALERT DRAFT", color = Color(0xFFFF9A91), fontSize = 10.sp, letterSpacing = 2.sp)
-                Text(saved, color = White, fontSize = 13.sp)
-                Text("LOCAL ONLY · NOT BROADCAST", color = Color(0xFFEBC68E), fontSize = 10.sp)
-                TextButton(onClick = { prefs.edit().remove("draft").apply(); saved = ""; status = "Alert draft deleted." }) { Text("Delete draft", color = Muted) }
-            }
-        }
-        Text("Production requirement: an authenticated alert service, enrolled-device delivery, delivery receipts, expiry, audit logs and rate limits. Alerts must be genuine Bloom service notices, not presented as official government or public emergency warnings.", color = Muted, fontSize = 11.sp)
-    }
-}
-
-@Composable
-private fun Metric(title: String, value: String, detail: String, accent: Color, mod: Modifier) {
-    Column(mod.background(Panel, RoundedCornerShape(15.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, color = Muted, fontSize = 9.sp)
-        Text(value, color = accent, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Text(detail, color = Muted, fontSize = 10.sp)
-    }
-}
-
-@Composable
-private fun Library(query: String, setQuery: (String)->Unit, category: String, setCategory: (String)->Unit, accent: Color) {
-    val filtered = remember(query, category) { catalogue.filter { (category == "All categories" || it.category == category) && (query.isBlank() || it.title.contains(query, true) || it.category.contains(query, true) || it.id.toString() == query) } }
-    var expanded by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Text("1,300+ owner capability catalogue", color = accent, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-        Text("Search the roadmap. Every entry is labelled planned until a real implementation is connected.", color = Muted, fontSize = 11.sp)
-        BasicTextField(query, setQuery, singleLine = true, modifier = Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(11.dp)).padding(14.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White, fontSize = 14.sp), decorationBox = { inner -> if(query.isEmpty()) Text("Search controls, categories or ID…", color = Muted); inner() })
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { expanded = true }, colors = ButtonDefaults.buttonColors(containerColor = Raised)) { Text(category, color = White) }
-            DropdownMenu(expanded, { expanded = false }) {
-                DropdownMenuItem(text = { Text("All categories") }, onClick = { setCategory("All categories"); expanded = false })
-                categories.forEach { c -> DropdownMenuItem(text = { Text(c) }, onClick = { setCategory(c); expanded = false }) }
-            }
-            Spacer(Modifier.weight(1f))
-            Text("${filtered.size} results", color = accent, fontSize = 11.sp)
-        }
-        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(filtered, key = { it.id }) { item ->
-                Row(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(10.dp)).padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(item.id.toString().padStart(4, '0'), color = accent, fontSize = 11.sp)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) { Text(item.title, color = White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold); Text(item.category, color = Muted, fontSize = 10.sp) }
-                    Text("PLANNED", color = Color(0xFFEBC68E), fontSize = 9.sp)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Management(title: String, description: String, rows: List<String>, accent: Color, open: () -> Unit) {
-    Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(18.dp)).padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(title, color = White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        Text(description, color = Muted, fontSize = 12.sp)
-        rows.forEach { Row(Modifier.fillMaxWidth().background(Raised, RoundedCornerShape(10.dp)).padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text(it, color = White, fontSize = 13.sp); Text("›", color = accent) } }
-        Button(onClick = open, colors = ButtonDefaults.buttonColors(containerColor = accent)) { Text("Open Android settings / source", color = Ink) }
-    }
-}
-
-@Composable
-private fun Settings(name: String, setName: (String)->Unit, selected: Int, setAccent: (Int)->Unit, reduce: Boolean, setReduce: (Boolean)->Unit, accent: Color) {
-    Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(18.dp)).padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Owner preferences", color = White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        Text("Owner display name", color = Muted, fontSize = 12.sp)
-        BasicTextField(name, setName, singleLine = true, modifier = Modifier.fillMaxWidth().background(Raised, RoundedCornerShape(10.dp)).padding(13.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White))
-        Text("Accent theme", color = Muted, fontSize = 12.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(Pink, Color(0xFF9FC7F2), Color(0xFFB8DAB5), Color(0xFFEBC68E)).forEachIndexed { i, color -> Button(onClick = { setAccent(i) }, colors = ButtonDefaults.buttonColors(containerColor = color)) { Text(if(i == selected) "Selected" else "Choose", color = Ink) } }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) { Text("Reduce motion", color = White, modifier = Modifier.weight(1f)); Switch(reduce, setReduce) }
-        Text("These preferences belong only to Bloom Owner OS. They do not alter the standard Bloom launcher.", color = Muted, fontSize = 11.sp)
-    }
-}
+@Composable private fun Page(content:@Composable ColumnScope.()->Unit){Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(11.dp),content=content)}
+@Composable private fun Panel(title:String,desc:String?=null,content:@Composable ColumnScope.()->Unit){Column(Modifier.fillMaxWidth().background(panel,RoundedCornerShape(15.dp)).padding(15.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){Text(title,color=white,fontSize=17.sp,fontWeight=FontWeight.Bold);if(desc!=null)Text(desc,color=muted,fontSize=11.sp);content()}}
+@Composable private fun Btn(label:String,action:()->Unit){Button(onClick=action,colors=ButtonDefaults.buttonColors(containerColor=accent,contentColor=bg),contentPadding=PaddingValues(horizontal=12.dp,vertical=8.dp)){Text(label,fontSize=11.sp,fontWeight=FontWeight.Bold)}}
+@Composable private fun Input(value:String,change:(String)->Unit,hint:String,multi:Boolean=false){BasicTextField(value,change,modifier=Modifier.fillMaxWidth().then(if(multi)Modifier.heightIn(min=80.dp)else Modifier).background(raised,RoundedCornerShape(8.dp)).padding(12.dp),textStyle=androidx.compose.ui.text.TextStyle(color=white,fontSize=12.sp),decorationBox={inner->if(value.isEmpty())Text(hint,color=muted,fontSize=12.sp);inner()})}
+@Composable private fun Note(s:String,c:Color=muted){Text(s,color=c,fontSize=10.sp)}
+@Composable private fun Metric(a:String,b:String,c:String){Column(Modifier.weight(1f).background(panel,RoundedCornerShape(12.dp)).padding(12.dp)){Text(a,color=muted,fontSize=9.sp);Text(b,color=accent,fontSize=21.sp,fontWeight=FontWeight.Bold);Text(c,color=muted,fontSize=9.sp)}}
+@Composable private fun Home(p:android.content.SharedPreferences,open:(P)->Unit,rev:Int){val q=remember(rev){read(p)};Page{
+ Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFF314B69),Color(0xFF19283B),bg)),RoundedCornerShape(18.dp)).padding(20.dp)){Column{Text("OWNER OPERATIONS",color=accent,fontSize=10.sp,letterSpacing=2.sp);Text("Your test platform, under control.",color=white,fontSize=25.sp,fontWeight=FontWeight.Bold);Text("A private control surface for Bloom Test OS. Main Bloom OS remains separate.",color=muted,fontSize=12.sp)}}
+ Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Metric("TARGET","TEST OS","Separate app");Metric("COMMANDS",q.size.toString(),"Local queue");Metric("REMOTE DEVICES","0","No service connected");Metric("MAIN OS","ISOLATED","Not targeted")}
+ Panel("Quick actions","Queue test-environment operations."){Row(horizontalArrangement=Arrangement.spacedBy(7.dp)){Btn("Global controls"){open(P.GLOBAL)};Btn("Priority alert"){open(P.ALERT)};Btn("Enforcement"){open(P.ENFORCE)}};Row(horizontalArrangement=Arrangement.spacedBy(7.dp)){Btn("Broadcast"){open(P.BROADCAST)};Btn("Fleet"){open(P.FLEET)};Btn("Audit"){open(P.AUDIT)}}}
+ Panel("Latest commands"){q.take(4).forEach{Note(it.title+" · "+it.status,white)};if(q.isEmpty())Note("No commands queued.")}
+ Note("Commands are saved locally and NOT delivered to other TVs until an authenticated service and enrolled agents exist.",warn)
+}}
+@Composable private fun Global(p:android.content.SharedPreferences,changed:()->Unit){val ops=listOf("Enable Test OS maintenance mode","Resume Test OS services","Request Test OS restart","Refresh test configuration","Pause test enrolments","Resume test enrolments","Freeze test release rollout","Resume test release rollout","Set test environment read-only","Clear test announcement banner","Request fleet diagnostics","Restore normal test operation");Page{Panel("Global test operations","These target Bloom Test OS only. Each creates an auditable local command."){ops.forEach{s->Row(Modifier.fillMaxWidth().background(raised,RoundedCornerShape(8.dp)).padding(9.dp),verticalAlignment=Alignment.CenterVertically){Text(s,color=white,fontSize=11.sp,modifier=Modifier.weight(1f));Btn("Queue"){add(p,s,"All enrolled Test OS devices");changed()}}}};Note("No physical power-off controls. Restart and shutdown are service-level test requests, not hardware power commands.",warn)}}
+@Composable private fun Fleet(p:android.content.SharedPreferences,changed:()->Unit){Page{Panel("Test device fleet","Remote fleet requires test-device enrolment and a secure service."){Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Metric("ENROLLED","0","Devices");Metric("ONLINE","0","Heartbeat");Metric("RESTRICTED","0","Active cases")};listOf("Create enrolment invite","Rotate enrolment token","Request device inventory","Refresh fleet heartbeat","Export device register").forEach{s->Row(verticalAlignment=Alignment.CenterVertically){Text(s,color=white,fontSize=11.sp,modifier=Modifier.weight(1f));TextButton(onClick={add(p,s,"Test fleet");changed()}){Text("Queue",color=accent)}}};Note("No remote devices are connected. Main Bloom OS is excluded.")}}}
+@Composable private fun Broadcast(p:android.content.SharedPreferences,changed:()->Unit){var title by remember{mutableStateOf("")};var msg by remember{mutableStateOf("")};var audience by remember{mutableStateOf("All enrolled Test OS devices")};Page{Panel("Broadcast studio","Prepare a test-environment notice."){Input(title,{title=it},"Announcement title");Input(msg,{msg=it},"Message",true);listOf("All enrolled Test OS devices","Selected test devices","Test administrators only").forEach{Row(verticalAlignment=Alignment.CenterVertically){RadioButton(audience==it,{audience=it});Text(it,color=white,fontSize=11.sp)}};Btn("Queue announcement"){if(title.isNotBlank()&&msg.isNotBlank()){add(p,"Announcement: "+title+" | "+msg,audience);changed()}};Note("Local queue only. Not sent to other devices.",warn)}}}
+@Composable private fun Alerts(p:android.content.SharedPreferences,changed:()->Unit){var title by remember{mutableStateOf("")};var msg by remember{mutableStateOf("")};var sound by remember{mutableStateOf(true)};var status by remember{mutableStateOf("")};Page{Panel("Bloom priority alert","For genuine Bloom service incidents only. Not an official public emergency alert."){Input(title,{title=it},"Alert heading");Input(msg,{msg=it},"Alert message",true);Row(verticalAlignment=Alignment.CenterVertically){Text("Original Bloom warning tone",color=white,modifier=Modifier.weight(1f));Switch(sound,{sound=it})};Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Btn("Preview tone"){try{val t=ToneGenerator(AudioManager.STREAM_NOTIFICATION,55);t.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD,900);android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({t.release()},1100);status="Local tone preview played."}catch(e:Exception){status="Preview unavailable."}};Btn("Queue alert"){if(title.isNotBlank()&&msg.isNotBlank()){add(p,"Priority alert: "+title+" | sound="+sound,"Bloom Test OS");changed();status="Queued locally, not delivered."}}};Note(status,accent)};Note("Uses a short original warning tone, not a copy of the UK Emergency Alerts signal. Remote delivery needs enrolled devices and a secure service.",warn)}}
+@Composable private fun Enforcement(p:android.content.SharedPreferences,changed:()->Unit){var device by remember{mutableStateOf("")};var reason by remember{mutableStateOf("")};var evidence by remember{mutableStateOf("")};var duration by remember{mutableStateOf("24 hours")};var result by remember{mutableStateOf("")};Page{Panel("Trust & enforcement","Evidence-led review, temporary restrictions, appeals and owner recovery."){Input(device,{device=it},"Enrolled Test OS device ID");Input(reason,{reason=it},"Policy concern / incident summary",true);Input(evidence,{evidence=it},"Evidence reference and reviewer notes",true);Text("Proposed restriction period",color=muted,fontSize=11.sp);listOf("1 hour","24 hours","7 days","Until manual review").forEach{Row(verticalAlignment=Alignment.CenterVertically){RadioButton(duration==it,{duration=it});Text(it,color=white,fontSize=11.sp)}};Btn("Create review case"){if(device.isNotBlank()&&reason.isNotBlank()){add(p,"Review case: "+reason+" | evidence: "+evidence,"Test device "+device);changed();result="Review case recorded locally."}};Btn("Queue temporary restriction request"){if(device.isNotBlank()&&reason.isNotBlank()){add(p,"Restriction request ("+duration+"): "+reason,"Test device "+device);changed();result="Request recorded. No device has been locked."}};Note(result,warn)};Panel("Enforcement safeguards"){listOf("Only enrolled Bloom Test OS devices can be targeted.","Require documented reasons and evidence.","Provide an appeal and owner recovery route.","Use expiry and review dates.","Do not restrict on an unverified accusation.").forEach{Note("• "+it)}}}}
+@Composable private fun Policy(p:android.content.SharedPreferences,changed:()->Unit){val policies=listOf("Require verified app sources","Block unapproved test builds","Require privacy notice acceptance","Restrict test-only developer menus","Set minimum supported version","Review requested permissions","Enable safe-mode recovery","Require release approval");Page{Panel("App and policy manager","Policy proposals are not enforced until a policy service is connected."){policies.forEach{s->var on by remember{mutableStateOf(false)};Row(verticalAlignment=Alignment.CenterVertically){Text(s,color=white,fontSize=11.sp,modifier=Modifier.weight(1f));Switch(on,{on=it;add(p,"Policy proposal: "+s+" = "+it,"Test OS policy");changed()})};Note("PROPOSAL · NOT ENFORCED")}}}}
+@Composable private fun ReleasePage(){Page{Panel("Release management","Controlled test release rings."){listOf("Internal preview","Canary test devices","Wider test cohort","Stable test channel","Rollback planning","Release notes","Compatibility gate").forEach{Row(Modifier.fillMaxWidth().background(raised,RoundedCornerShape(8.dp)).padding(12.dp)){Text(it,color=white,modifier=Modifier.weight(1f));Note("NOT CONNECTED",warn)}};Note("GitHub Actions builds APKs. This screen does not silently install or roll back software.")}}}
+@Composable private fun Diagnostics(){Page{Panel("Diagnostics","Current integration status."){listOf("Owner console: local","Secure owner service: not configured","Test device agents: none enrolled","Alert delivery: unavailable","Remote enforcement: unavailable","Main OS: separate application ID").forEach{Note("• "+it)}}}}
+@Composable private fun Audit(p:android.content.SharedPreferences,rev:Int,clear:()->Unit){val q=remember(rev){read(p)};Page{Panel("Command history","Newest records first. Queueing is not delivery."){if(q.isEmpty())Note("No command records.");q.forEach{Column(Modifier.fillMaxWidth().background(raised,RoundedCornerShape(8.dp)).padding(10.dp)){Text(it.title,color=white,fontSize=12.sp,fontWeight=FontWeight.SemiBold);Note(it.time+" · "+it.scope);Note(it.status,warn)}};Btn("Clear local history",clear)}}}
+@Composable private fun Settings(name:String,change:(String)->Unit){Page{Panel("Owner preferences","Stored on this installation."){Input(name,change,"Owner display name");Note("Secure your Android device with a screen lock. Server-backed owner authentication is not yet configured.")}}}
