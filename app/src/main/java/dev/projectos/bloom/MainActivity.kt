@@ -310,7 +310,7 @@ private fun LauncherScreen() {
     var showSystemInfo by remember { mutableStateOf(false) }
     val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     var profileName by remember { mutableStateOf(preferences.getString("profile_name", "").orEmpty()) }
-    var showSignUp by remember { mutableStateOf(profileName.isBlank()) }
+    var showSignUp by remember { mutableStateOf(!preferences.getBoolean("profile_setup_complete", false)) }
     var availableUpdate by remember { mutableStateOf<BloomUpdate?>(null) }
     var updateBusy by remember { mutableStateOf(false) }
     var updateMessage by remember { mutableStateOf("") }
@@ -483,10 +483,13 @@ private fun LauncherScreen() {
                 initialName = profileName,
                 onComplete = { name ->
                     profileName = name
-                    preferences.edit().putString("profile_name", name).apply()
+                    preferences.edit().putString("profile_name", name).putBoolean("profile_setup_complete", true).apply()
                     showSignUp = false
                 },
-                onSkip = { showSignUp = false }
+                onSkip = {
+                    preferences.edit().putBoolean("profile_setup_complete", true).apply()
+                    showSignUp = false
+                }
             )
         }
 
@@ -537,7 +540,7 @@ private fun LauncherScreen() {
                         preferences.edit().putBoolean("reduce_motion", it).apply()
                     },
                     onUpdatesClick = { showUpdates = true },
-                    onProfileClick = { showSignUp = true },
+                    onProfileClick = { showSettings = false; showSignUp = true },
                     onSystemInfoClick = { showSystemInfo = true },
                     onBack = { showSettings = false }
                 )
