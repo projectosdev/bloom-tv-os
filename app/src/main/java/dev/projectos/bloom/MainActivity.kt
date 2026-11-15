@@ -201,6 +201,7 @@ private fun LauncherScreen() {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
     var showAppLibrary by remember { mutableStateOf(false) }
+    var showStore by remember { mutableStateOf(false) }
     var showUpdates by remember { mutableStateOf(false) }
     var showSystemInfo by remember { mutableStateOf(false) }
     val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
@@ -209,12 +210,13 @@ private fun LauncherScreen() {
     val motionAllowed = animationsEnabled && !reduceMotion
     val transitionDuration = if (motionAllowed) 260 else 0
 
-    BackHandler(enabled = showSettings || showAppLibrary) {
+    BackHandler(enabled = showSettings || showAppLibrary || showStore) {
         when {
             showUpdates -> showUpdates = false
             showSystemInfo -> showSystemInfo = false
             showSettings -> showSettings = false
             showAppLibrary -> showAppLibrary = false
+            showStore -> showStore = false
         }
     }
 
@@ -231,7 +233,7 @@ private fun LauncherScreen() {
 
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
-            visible = !showSettings && !showAppLibrary,
+            visible = !showSettings && !showAppLibrary && !showStore,
             enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 30 else 0 }, animationSpec = tween(transitionDuration)),
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) -it / 40 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
@@ -250,6 +252,17 @@ private fun LauncherScreen() {
                         Text(clockText, color = Ink, fontSize = 12.sp)
                     }
                     Spacer(Modifier.width(14.dp))
+                    Surface(
+                        onClick = { showStore = true },
+                        color = Color(0xFF684D70),
+                        shape = RoundedCornerShape(30.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                    ) {
+                        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Store", color = Color.White, fontSize = 12.sp)
+                        }
+                    }
+                    Spacer(Modifier.width(10.dp))
                     Surface(
                         onClick = { showAppLibrary = true },
                         color = Glass,
@@ -341,6 +354,15 @@ private fun LauncherScreen() {
                     Text("${installed.size} APPS AVAILABLE", color = Ink.copy(alpha = 0.55f), fontSize = 10.sp, letterSpacing = 1.sp)
                 }
             }
+        }
+
+        AnimatedVisibility(
+            visible = showStore,
+            modifier = Modifier.fillMaxSize(),
+            enter = fadeIn(tween(transitionDuration)),
+            exit = fadeOut(tween(if (motionAllowed) 160 else 0))
+        ) {
+            BloomStoreScreen(onBack = { showStore = false })
         }
 
         AnimatedVisibility(
@@ -573,6 +595,89 @@ private fun UpdateScreen(onBack: () -> Unit) {
         }
         Spacer(Modifier.weight(1f))
         Text("Updates currently require installing a newer Bloom build manually.", color = Ink.copy(alpha = 0.4f), fontSize = 11.sp)
+    }
+}
+
+private data class StoreApp(val name: String, val category: String, val packageName: String)
+
+private val bloomStoreApps = listOf(
+    StoreApp("YouTube", "Video", "com.google.android.youtube.tv"),
+    StoreApp("Netflix", "Video", "com.netflix.mediaclient"),
+    StoreApp("Prime Video", "Video", "com.amazon.amazonvideo.livingroom"),
+    StoreApp("Disney+", "Video", "com.disney.disneyplus"),
+    StoreApp("Spotify", "Music", "com.spotify.tv.android"),
+    StoreApp("Plex", "Media", "com.plexapp.android"),
+    StoreApp("ChatGPT", "Productivity", "com.openai.chatgpt")
+)
+
+@Composable
+private fun BloomStoreScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    var search by remember { mutableStateOf("") }
+    val visibleApps = remember(search) {
+        bloomStoreApps.filter { it.name.contains(search, ignoreCase = true) || it.category.contains(search, ignoreCase = true) }
+    }
+
+    fun openStoreListing(app: StoreApp) {
+        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${app.packageName}"))
+        val web = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/details?id=${app.packageName}"))
+        runCatching {
+            if (market.resolveActivity(context.packageManager) != null) context.startActivity(market)
+            else context.startActivity(web)
+        }.onFailure {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/search?q=${Uri.encode(app.name)}&c=apps"))) }
+        }
+    }
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 30.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(onClick = onBack, color = Glass, shape = CircleShape, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))) {
+                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink) }
+            }
+            Spacer(Modifier.width(18.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Bloom Store", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
+                Text("Discover apps for your screen.", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        TextField(
+            value = search,
+            onValueChange = { search = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            placeholder = { Text("Search featured apps") },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Glass, unfocusedContainerColor = Glass,
+                focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                focusedPlaceholderColor = Ink.copy(alpha = 0.5f), unfocusedPlaceholderColor = Ink.copy(alpha = 0.5f),
+                focusedIndicatorColor = Petal, unfocusedIndicatorColor = Color.Transparent, cursorColor = Petal
+            )
+        )
+        Spacer(Modifier.height(12.dp))
+        Text("FEATURED APPS", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(10.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            items(visibleApps) { app ->
+                Surface(onClick = { openStoreListing(app) }, modifier = Modifier.fillMaxWidth(), color = Glass,
+                    shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(42.dp).background(Color(0x334F405F), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                            Text(app.name.take(1), color = Petal, fontSize = 21.sp)
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(app.name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                            Text(app.category, color = Ink.copy(alpha = 0.52f), fontSize = 11.sp)
+                        }
+                        Text("View listing  ›", color = Petal, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text("Bloom Store opens official Google Play listings. Availability depends on your device and region. Bloom does not host or install app files itself.",
+            color = Ink.copy(alpha = 0.48f), fontSize = 11.sp)
     }
 }
 
