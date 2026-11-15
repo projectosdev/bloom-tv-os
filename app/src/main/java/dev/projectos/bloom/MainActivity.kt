@@ -29,6 +29,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -145,6 +146,7 @@ private fun BootScreen() {
 private fun LauncherScreen() {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
+    var showAppLibrary by remember { mutableStateOf(false) }
     var showUpdates by remember { mutableStateOf(false) }
     var showSystemInfo by remember { mutableStateOf(false) }
     val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
@@ -153,11 +155,12 @@ private fun LauncherScreen() {
     val motionAllowed = animationsEnabled && !reduceMotion
     val transitionDuration = if (motionAllowed) 260 else 0
 
-    BackHandler(enabled = showSettings) {
+    BackHandler(enabled = showSettings || showAppLibrary) {
         when {
             showUpdates -> showUpdates = false
             showSystemInfo -> showSystemInfo = false
-            else -> showSettings = false
+            showSettings -> showSettings = false
+            showAppLibrary -> showAppLibrary = false
         }
     }
 
@@ -174,7 +177,7 @@ private fun LauncherScreen() {
 
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
-            visible = !showSettings,
+            visible = !showSettings && !showAppLibrary,
             enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 30 else 0 }, animationSpec = tween(transitionDuration)),
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) -it / 40 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
@@ -193,6 +196,17 @@ private fun LauncherScreen() {
                         Text(clockText, color = Ink, fontSize = 12.sp)
                     }
                     Spacer(Modifier.width(14.dp))
+                    Surface(
+                        onClick = { showAppLibrary = true },
+                        color = Glass,
+                        shape = RoundedCornerShape(30.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                    ) {
+                        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Apps", color = Ink, fontSize = 12.sp)
+                        }
+                    }
+                    Spacer(Modifier.width(10.dp))
                     Surface(
                         onClick = { showSettings = true },
                         color = Glass,
@@ -241,6 +255,27 @@ private fun LauncherScreen() {
                     Text("${installed.size} APPS AVAILABLE", color = Ink.copy(alpha = 0.55f), fontSize = 10.sp, letterSpacing = 1.sp)
                 }
             }
+        }
+
+        AnimatedVisibility(
+            visible = showAppLibrary,
+            modifier = Modifier.fillMaxSize(),
+            enter = fadeIn(tween(transitionDuration)),
+            exit = fadeOut(tween(if (motionAllowed) 160 else 0))
+        ) {
+            AppLibraryScreen(
+                apps = installed,
+                onRefresh = { installed = discoverTvApps(context) },
+                onLaunch = { app ->
+                    runCatching {
+                        val launchIntent = Intent(Intent.ACTION_MAIN)
+                            .addCategory(app.launcherCategory)
+                            .setClassName(app.packageName, app.activityName)
+                        context.startActivity(launchIntent)
+                    }
+                },
+                onBack = { showAppLibrary = false }
+            )
         }
 
         AnimatedVisibility(
@@ -457,6 +492,90 @@ private fun UpdateScreen(onBack: () -> Unit) {
         }
         Spacer(Modifier.weight(1f))
         Text("Updates currently require installing a newer Bloom build manually.", color = Ink.copy(alpha = 0.4f), fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun AppLibraryScreen(
+    apps: List<TvApp>,
+    onRefresh: () -> Unit,
+    onLaunch: (TvApp) -> Unit,
+    onBack: () -> Unit
+) {
+    var search by remember { mutableStateOf("") }
+    val filteredApps = remember(apps, search) {
+        apps.filter { it.title.contains(search, ignoreCase = true) }
+    }
+    Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 30.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                onClick = onBack,
+                color = Glass,
+                shape = CircleShape,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+            ) {
+                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink)
+                }
+            }
+            Spacer(Modifier.width(18.dp))
+            Column(Modifier.weight(1f)) {
+                Text("App library", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
+                Text("${apps.size} installed apps", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
+            }
+            TextButton(onClick = onRefresh) { Text("Refresh", color = Petal) }
+        }
+        Spacer(Modifier.height(22.dp))
+        TextField(
+            value = search,
+            onValueChange = { search = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            placeholder = { Text("Search installed apps") },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Glass,
+                unfocusedContainerColor = Glass,
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedPlaceholderColor = Ink.copy(alpha = 0.5f),
+                unfocusedPlaceholderColor = Ink.copy(alpha = 0.5f),
+                focusedIndicatorColor = Petal,
+                unfocusedIndicatorColor = Color.Transparent,
+                cursorColor = Petal
+            )
+        )
+        Spacer(Modifier.height(16.dp))
+        if (filteredApps.isEmpty()) {
+            Text(
+                if (apps.isEmpty()) "No compatible apps were found. Install an app and refresh." else "No apps match that search.",
+                color = Ink.copy(alpha = 0.7f),
+                fontSize = 14.sp
+            )
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                items(filteredApps) { app ->
+                    Surface(
+                        onClick = { onLaunch(app) },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Glass,
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(app.title.take(1).uppercase(), color = Petal, fontSize = 23.sp, modifier = Modifier.width(42.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(app.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                                Text(app.packageName, color = Ink.copy(alpha = 0.48f), fontSize = 10.sp)
+                            }
+                            Text("Open  ›", color = Petal, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
