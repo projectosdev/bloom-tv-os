@@ -568,7 +568,7 @@ private fun LauncherScreen() {
                     Text("Install apps on your device, then select Refresh apps.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
                 } else {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        items(installed) { app ->
+                        items(installed, key = { it.packageName }) { app ->
                             AppTile(app, animationsEnabled && !reduceMotion, compactTiles) {
                                 runCatching { launchBloomApp(context, app) }
                             }
@@ -831,6 +831,33 @@ private fun SettingsRow(title: String, subtitle: String, trailing: String, onCli
 }
 
 @Composable
+private fun BloomActionSurface(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    color: Color = Glass,
+    content: @Composable () -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    val background by animateColorAsState(
+        targetValue = if (focused) Color(0xFF3A4A6D) else color,
+        animationSpec = tween(140),
+        label = "bloom-action-focus"
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier.onFocusChanged { focused = it.isFocused },
+        color = background,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(
+            if (focused) 2.dp else 1.dp,
+            if (focused) BloomAccent.value else Color.White.copy(alpha = 0.12f)
+        ),
+        content = content
+    )
+}
+
+@Composable
 private fun SettingsSwitchRow(
     title: String,
     subtitle: String,
@@ -1068,10 +1095,8 @@ private fun BloomStoreScreen(onBack: () -> Unit) {
             }
         } else {
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(visibleApps) { app ->
-                    Surface(onClick = { selectedApp = app }, modifier = Modifier.fillMaxWidth(),
-                        color = Glass, shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
+                items(visibleApps, key = { it.packageName }) { app ->
+                    BloomActionSurface(onClick = { selectedApp = app }, modifier = Modifier.fillMaxWidth()) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 11.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(46.dp).background(
@@ -1185,13 +1210,10 @@ private fun AppLibraryScreen(
             )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                items(filteredApps) { app ->
-                    Surface(
+                items(filteredApps, key = { it.packageName }) { app ->
+                    BloomActionSurface(
                         onClick = { onLaunch(app) },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Glass,
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp),
@@ -1542,8 +1564,8 @@ private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             item { Text("INSTALLED APPS  •  ${matches.size}", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp) }
             if (matches.isEmpty()) item { Text("No installed apps match.", color = Ink.copy(alpha = 0.58f), fontSize = 11.sp) }
-            items(matches) { app ->
-                Surface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth(), color = Glass, shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
+            items(matches, key = { it.packageName }) { app ->
+                BloomActionSurface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 21.sp, modifier = Modifier.width(38.dp))
                         Column(Modifier.weight(1f)) { Text(app.title, color = Color.White, fontWeight = FontWeight.SemiBold); Text(app.packageName, color = Ink.copy(alpha = 0.45f), fontSize = 9.sp) }
@@ -1552,12 +1574,12 @@ private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (
                 }
             }
             item { Spacer(Modifier.height(8.dp)); Text("BLOOM STORE  •  ${storeMatches.size}", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp) }
-            items(storeMatches) { app ->
-                Surface(onClick = {
+            items(storeMatches, key = { it.packageName }) { app ->
+                BloomActionSurface(onClick = {
                     val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${app.packageName}"))
                     val web = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/details?id=${app.packageName}"))
                     runCatching { if (market.resolveActivity(context.packageManager) != null) context.startActivity(market) else context.startActivity(web) }
-                }, modifier = Modifier.fillMaxWidth(), color = Glass, shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
+                }, modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(app.name.take(1).uppercase(), color = BloomAccent.value, fontSize = 21.sp, modifier = Modifier.width(38.dp))
                         Column(Modifier.weight(1f)) { Text(app.name, color = Color.White, fontWeight = FontWeight.SemiBold); Text(app.category + "  •  " + app.badge, color = Ink.copy(alpha = 0.45f), fontSize = 9.sp) }
@@ -1640,8 +1662,12 @@ private fun BloomProfilesScreen(currentName: String, onSelect: (String) -> Unit,
         }
         Spacer(Modifier.height(22.dp))
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(profileSet.distinct()) { profile ->
-                Surface(onClick = { onSelect(profile) }, modifier = Modifier.fillMaxWidth(), color = if (profile == currentName) Color(0x443E5278) else Glass, shape = RoundedCornerShape(18.dp), border = BorderStroke(if (profile == currentName) 2.dp else 1.dp, if (profile == currentName) BloomAccent.value else Color.White.copy(alpha = 0.12f))) {
+            items(profileSet.distinct(), key = { it }) { profile ->
+                BloomActionSurface(
+                    onClick = { onSelect(profile) },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = if (profile == currentName) Color(0x443E5278) else Glass
+                ) {
                     Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(44.dp).background(BloomAccent.value, CircleShape), contentAlignment = Alignment.Center) { Text(profile.take(1).uppercase(), color = Midnight, fontSize = 20.sp, fontWeight = FontWeight.Bold) }
                         Spacer(Modifier.width(14.dp))
