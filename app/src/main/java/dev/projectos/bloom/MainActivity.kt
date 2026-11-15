@@ -308,6 +308,9 @@ private fun LauncherScreen() {
     var showStore by remember { mutableStateOf(false) }
     var showUpdates by remember { mutableStateOf(false) }
     var showSystemInfo by remember { mutableStateOf(false) }
+    var showControlCentre by remember { mutableStateOf(false) }
+    var showBloomSearch by remember { mutableStateOf(false) }
+    var showAmbient by remember { mutableStateOf(false) }
     val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     var profileName by remember { mutableStateOf(preferences.getString("profile_name", "").orEmpty()) }
     var showSignUp by remember { mutableStateOf(!preferences.getBoolean("profile_setup_complete", false)) }
@@ -328,9 +331,12 @@ private fun LauncherScreen() {
     val motionAllowed = animationsEnabled && !reduceMotion
     val transitionDuration = if (motionAllowed) 260 else 0
 
-    BackHandler(enabled = showSettings || showAppLibrary || showStore || showSignUp) {
+    BackHandler(enabled = showSettings || showAppLibrary || showStore || showSignUp || showControlCentre || showBloomSearch || showAmbient) {
         when {
             showSignUp -> showSignUp = false
+            showControlCentre -> showControlCentre = false
+            showBloomSearch -> showBloomSearch = false
+            showAmbient -> showAmbient = false
             showUpdates -> showUpdates = false
             showSystemInfo -> showSystemInfo = false
             showSettings -> showSettings = false
@@ -352,7 +358,7 @@ private fun LauncherScreen() {
 
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
-            visible = !showSettings && !showAppLibrary && !showStore && !showSignUp,
+            visible = !showSettings && !showAppLibrary && !showStore && !showSignUp && !showControlCentre && !showBloomSearch && !showAmbient,
             enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 30 else 0 }, animationSpec = tween(transitionDuration)),
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) -it / 40 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
@@ -408,6 +414,15 @@ private fun LauncherScreen() {
                         }
                     }
                     Spacer(Modifier.width(10.dp))
+                    Surface(
+                        onClick = { showControlCentre = true },
+                        color = Color(0x334F6A9A),
+                        shape = RoundedCornerShape(30.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                    ) {
+                        Text("Quick settings", modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp), color = Ink, fontSize = 12.sp)
+                    }
+                    Spacer(Modifier.width(8.dp))
                     Surface(
                         onClick = { showSettings = true },
                         color = Glass,
@@ -479,7 +494,11 @@ private fun LauncherScreen() {
                         Text("Refresh apps", color = Ink.copy(alpha = 0.75f), fontSize = 12.sp)
                     }
                 }
-                Spacer(Modifier.height(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    TextButton(onClick = { showBloomSearch = true }) { Text("⌕  Search Bloom", color = Petal) }
+                    TextButton(onClick = { showAmbient = true }) { Text("✦  Bloom Ambient", color = Petal) }
+                }
+                Spacer(Modifier.height(8.dp))
                 if (installed.isEmpty()) {
                     Text("No supported streaming apps detected yet.", color = Ink, fontSize = 16.sp)
                     Text("Install apps on your device, then select Refresh apps.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
@@ -543,6 +562,24 @@ private fun LauncherScreen() {
                 },
                 onBack = { showAppLibrary = false }
             )
+        }
+
+        AnimatedVisibility(visible = showControlCentre, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+            BloomControlCentre(
+                animationsEnabled = animationsEnabled, onAnimations = { animationsEnabled = it; preferences.edit().putBoolean("animations_enabled", it).apply() },
+                reduceMotion = reduceMotion, onReduceMotion = { reduceMotion = it; preferences.edit().putBoolean("reduce_motion", it).apply() },
+                showCards = showSystemCards, onShowCards = { showSystemCards = it; preferences.edit().putBoolean("show_system_cards", it).apply() },
+                compactTiles = compactTiles, onCompactTiles = { compactTiles = it; preferences.edit().putBoolean("compact_tiles", it).apply() },
+                onClose = { showControlCentre = false }, onSettings = { showControlCentre = false; showSettings = true }
+            )
+        }
+
+        AnimatedVisibility(visible = showBloomSearch, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+            BloomSearchScreen(apps = installed, onBack = { showBloomSearch = false }, onLaunch = { app -> showBloomSearch = false; runCatching { launchBloomApp(context, app) } }, onSettings = { showBloomSearch = false; showSettings = true })
+        }
+
+        AnimatedVisibility(visible = showAmbient, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(350)), exit = fadeOut(tween(220))) {
+            BloomAmbientScreen(onExit = { showAmbient = false })
         }
 
         AnimatedVisibility(
@@ -1319,5 +1356,112 @@ private fun SystemMetricCard(title: String, value: String, detail: String, modif
             Text(value, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Text(detail, color = Ink.copy(alpha = 0.48f), fontSize = 9.sp, maxLines = 1)
         }
+    }
+}
+
+
+@Composable
+private fun BloomControlCentre(
+    animationsEnabled: Boolean, onAnimations: (Boolean) -> Unit,
+    reduceMotion: Boolean, onReduceMotion: (Boolean) -> Unit,
+    showCards: Boolean, onShowCards: (Boolean) -> Unit,
+    compactTiles: Boolean, onCompactTiles: (Boolean) -> Unit,
+    onClose: () -> Unit, onSettings: () -> Unit
+) {
+    Box(Modifier.fillMaxSize().background(Color(0xCC030611)).padding(30.dp), contentAlignment = Alignment.Center) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().widthIn(max = 900.dp),
+            color = Color(0xF0182032), shape = RoundedCornerShape(30.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), shadowElevation = 28.dp
+        ) {
+            Column(Modifier.padding(28.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("BLOOM CONTROL CENTRE", color = Petal, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                        Text("Your quick settings", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
+                    }
+                    TextButton(onClick = onClose) { Text("Done  ✕", color = Petal) }
+                }
+                Spacer(Modifier.height(20.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    QuickToggleCard("Bloom Motion", "Expressive transitions", animationsEnabled, onAnimations, Modifier.weight(1f))
+                    QuickToggleCard("Reduce Motion", "Less movement", reduceMotion, onReduceMotion, Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    QuickToggleCard("Home overview", "Show dashboard cards", showCards, onShowCards, Modifier.weight(1f))
+                    QuickToggleCard("Compact tiles", "Fit more apps on screen", compactTiles, onCompactTiles, Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(20.dp))
+                Text("Device controls such as Wi-Fi, Bluetooth and brightness remain managed by Android. Bloom won't pretend it can change system settings without permission.", color = Ink.copy(alpha = 0.5f), fontSize = 11.sp, lineHeight = 16.sp)
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = onSettings, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB8C7FF), contentColor = Color(0xFF101526))) { Text("Open all Bloom settings  →") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickToggleCard(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    Surface(modifier = modifier, color = Glass, shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, color = Ink.copy(alpha = 0.52f), fontSize = 10.sp)
+            }
+            Switch(checked = checked, onCheckedChange = onChange)
+        }
+    }
+}
+
+@Composable
+private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (TvApp) -> Unit, onSettings: () -> Unit) {
+    var query by remember { mutableStateOf("") }
+    val matches = remember(apps, query) { apps.filter { it.title.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) } }
+    Column(Modifier.fillMaxSize().background(Color(0xF8070B16)).padding(horizontal = 54.dp, vertical = 30.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack) { Text("← Back", color = Petal) }
+            Spacer(Modifier.width(14.dp))
+            Text("Bloom Search", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light)
+        }
+        Spacer(Modifier.height(18.dp))
+        OutlinedTextField(value = query, onValueChange = { query = it.take(60) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search apps on this device") }, placeholder = { Text("Try Netflix, Spotify or ChatGPT") }, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Petal, unfocusedBorderColor = Color.White.copy(alpha = 0.2f), focusedLabelColor = Petal, unfocusedLabelColor = Ink.copy(alpha = 0.6f), cursorColor = Petal))
+        Spacer(Modifier.height(14.dp))
+        Text("INSTALLED APPS  •  ${matches.size} RESULTS", color = Petal, fontSize = 9.sp, letterSpacing = 2.sp)
+        Spacer(Modifier.height(10.dp))
+        if (matches.isEmpty()) Text(if (query.isBlank()) "Start typing to find an installed app." else "No installed apps match that search.", color = Ink.copy(alpha = 0.65f))
+        else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(matches) { app ->
+                Surface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth(), color = Glass, shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(app.title.take(1).uppercase(), color = Petal, fontSize = 22.sp, modifier = Modifier.width(40.dp))
+                        Column(Modifier.weight(1f)) { Text(app.title, color = Color.White, fontWeight = FontWeight.SemiBold); Text(app.packageName, color = Ink.copy(alpha = 0.45f), fontSize = 10.sp) }
+                        Text("Open  ›", color = Petal, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        TextButton(onClick = onSettings) { Text("Search settings instead  →", color = Petal) }
+    }
+}
+
+@Composable
+private fun BloomAmbientScreen(onExit: () -> Unit) {
+    val motion = rememberInfiniteTransition(label = "ambient")
+    val drift by motion.animateFloat(-55f, 55f, infiniteRepeatable(tween(11000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "ambient-drift")
+    val pulse by motion.animateFloat(0.5f, 0.95f, infiniteRepeatable(tween(5000), RepeatMode.Reverse), label = "ambient-pulse")
+    var clock by remember { mutableStateOf(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())) }
+    LaunchedEffect(Unit) { while (true) { clock = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()); delay(15000) } }
+    Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF101B36), Midnight, Color(0xFF30213C))))) {
+        Box(Modifier.offset(x = drift.dp, y = (-80).dp).size(520.dp).background(Brush.radialGradient(listOf(Color(0x665C80D8).copy(alpha = pulse), Color.Transparent)), CircleShape))
+        Box(Modifier.align(Alignment.BottomEnd).offset(x = 100.dp, y = 100.dp).size(480.dp).background(Brush.radialGradient(listOf(Color(0x557B527D), Color.Transparent)), CircleShape))
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("bloom", color = Color.White.copy(alpha = 0.8f), fontSize = 20.sp, letterSpacing = 8.sp, fontWeight = FontWeight.Light)
+            Spacer(Modifier.height(12.dp))
+            Text(clock, color = Color.White, fontSize = 104.sp, fontWeight = FontWeight.ExtraLight, letterSpacing = (-4).sp)
+            Text(SimpleDateFormat("EEEE  •  d MMMM", Locale.getDefault()).format(Date()).uppercase(), color = Petal.copy(alpha = 0.78f), fontSize = 11.sp, letterSpacing = 3.sp)
+        }
+        TextButton(onClick = onExit, modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp)) { Text("Exit ambient  ✕", color = Ink.copy(alpha = 0.75f)) }
     }
 }
