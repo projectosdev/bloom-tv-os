@@ -308,6 +308,9 @@ private fun LauncherScreen() {
     var showStore by remember { mutableStateOf(false) }
     var showUpdates by remember { mutableStateOf(false) }
     var showSystemInfo by remember { mutableStateOf(false) }
+    val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
+    var profileName by remember { mutableStateOf(preferences.getString("profile_name", "").orEmpty()) }
+    var showSignUp by remember { mutableStateOf(profileName.isBlank()) }
     var availableUpdate by remember { mutableStateOf<BloomUpdate?>(null) }
     var updateBusy by remember { mutableStateOf(false) }
     var updateMessage by remember { mutableStateOf("") }
@@ -318,14 +321,14 @@ private fun LauncherScreen() {
             kotlinx.coroutines.delay(6 * 60 * 60 * 1000L)
         }
     }
-    val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     var animationsEnabled by remember { mutableStateOf(preferences.getBoolean("animations_enabled", true)) }
     var reduceMotion by remember { mutableStateOf(preferences.getBoolean("reduce_motion", false)) }
     val motionAllowed = animationsEnabled && !reduceMotion
     val transitionDuration = if (motionAllowed) 260 else 0
 
-    BackHandler(enabled = showSettings || showAppLibrary || showStore) {
+    BackHandler(enabled = showSettings || showAppLibrary || showStore || showSignUp) {
         when {
+            showSignUp -> showSignUp = false
             showUpdates -> showUpdates = false
             showSystemInfo -> showSystemInfo = false
             showSettings -> showSettings = false
@@ -347,7 +350,7 @@ private fun LauncherScreen() {
 
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
-            visible = !showSettings && !showAppLibrary && !showStore,
+            visible = !showSettings && !showAppLibrary && !showStore && !showSignUp,
             enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 30 else 0 }, animationSpec = tween(transitionDuration)),
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) -it / 40 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
@@ -471,6 +474,23 @@ private fun LauncherScreen() {
         }
 
         AnimatedVisibility(
+            visible = showSignUp,
+            modifier = Modifier.fillMaxSize(),
+            enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 24 else 0 }, animationSpec = tween(transitionDuration)),
+            exit = fadeOut(tween(if (motionAllowed) 160 else 0))
+        ) {
+            BloomSignUpScreen(
+                initialName = profileName,
+                onComplete = { name ->
+                    profileName = name
+                    preferences.edit().putString("profile_name", name).apply()
+                    showSignUp = false
+                },
+                onSkip = { showSignUp = false }
+            )
+        }
+
+        AnimatedVisibility(
             visible = showStore,
             modifier = Modifier.fillMaxSize(),
             enter = fadeIn(tween(transitionDuration)),
@@ -517,6 +537,7 @@ private fun LauncherScreen() {
                         preferences.edit().putBoolean("reduce_motion", it).apply()
                     },
                     onUpdatesClick = { showUpdates = true },
+                    onProfileClick = { showSignUp = true },
                     onSystemInfoClick = { showSystemInfo = true },
                     onBack = { showSettings = false }
                 )
@@ -569,6 +590,7 @@ private fun SettingsScreen(
     reduceMotion: Boolean,
     onReduceMotionChange: (Boolean) -> Unit,
     onUpdatesClick: () -> Unit,
+    onProfileClick: () -> Unit,
     onSystemInfoClick: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -588,6 +610,8 @@ private fun SettingsScreen(
             Column(Modifier.weight(1.15f)) {
                 Text("SYSTEM", color = Petal, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
+                SettingsRow("Your Profile", "Personalise your Bloom experience", "↗", onProfileClick)
+                Spacer(Modifier.height(12.dp))
                 SettingsRow("Software Update", "New features and Bloom releases", "↗", onUpdatesClick)
                 Spacer(Modifier.height(12.dp))
                 SettingsRow("About Bloom", "Version, device and system information", "↗", onSystemInfoClick)
@@ -945,6 +969,101 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, launch: () -> Unit) 
             Column {
                 Text(app.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Text(app.detail, color = Ink.copy(alpha = 0.55f), fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun BloomSignUpScreen(
+    initialName: String,
+    onComplete: (String) -> Unit,
+    onSkip: () -> Unit
+) {
+    var name by remember(initialName) { mutableStateOf(initialName) }
+    val cleanName = name.trim()
+    Box(Modifier.fillMaxSize().padding(34.dp), contentAlignment = Alignment.Center) {
+        Surface(
+            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(),
+            color = Color(0xCC111827),
+            shape = RoundedCornerShape(30.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.17f))
+        ) {
+            Column(
+                Modifier.padding(horizontal = 38.dp, vertical = 34.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    Modifier.size(66.dp).background(
+                        Brush.linearGradient(listOf(Color(0xFF9CB8FF), Color(0xFF8B70B7))),
+                        RoundedCornerShape(22.dp)
+                    ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("b", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Light)
+                }
+                Spacer(Modifier.height(22.dp))
+                Text(
+                    if (initialName.isBlank()) "Welcome to Bloom" else "Your Bloom profile",
+                    color = Color.White,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Light
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Make this space yours.",
+                    color = Petal,
+                    fontSize = 14.sp
+                )
+                Spacer(Modifier.height(26.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(32) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("What should we call you?") },
+                    placeholder = { Text("Your name") },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Petal,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.28f),
+                        focusedLabelColor = Petal,
+                        unfocusedLabelColor = Ink.copy(alpha = 0.65f),
+                        cursorColor = Petal
+                    )
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "This creates a profile on this device. No email or password is needed.",
+                    color = Ink.copy(alpha = 0.55f),
+                    fontSize = 11.sp
+                )
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = { onComplete(cleanName) },
+                    enabled = cleanName.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFB8C7FF),
+                        contentColor = Color(0xFF101526)
+                    )
+                ) {
+                    Text("Create profile", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                }
+                TextButton(onClick = onSkip) {
+                    Text("Set up later", color = Ink.copy(alpha = 0.72f))
+                }
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    "BLOOM ATMOSPHERE  •  YOUR SPACE, YOUR RULES",
+                    color = Ink.copy(alpha = 0.34f),
+                    fontSize = 9.sp,
+                    letterSpacing = 1.4.sp
+                )
             }
         }
     }
