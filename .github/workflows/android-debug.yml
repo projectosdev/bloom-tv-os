@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-debug:
@@ -33,7 +33,7 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build debug APK
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon :app:assembleDebug -PbloomVersionCode=${{ github.run_number }} -PbloomVersionName=0.1.${{ github.run_number }}
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -42,3 +42,14 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
+
+
+      - name: Publish Bloom release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/settings-updates-animations'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.${{ github.run_number }}
+          name: Bloom 0.1.${{ github.run_number }}
+          generate_release_notes: true
+          make_latest: true
+          files: app/build/outputs/apk/debug/*.apk
