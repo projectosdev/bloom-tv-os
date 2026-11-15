@@ -52,4 +52,5 @@ jobs:
           name: Bloom 0.1.${{ github.run_number }}
           generate_release_notes: true
           make_latest: true
+          target_commitish: feature/settings-updates-animations
           files: app/build/outputs/apk/debug/*.apk
