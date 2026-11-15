@@ -1,6 +1,8 @@
 package dev.projectos.bloom
 
 import android.content.Intent
+import android.app.DownloadManager
+import android.os.Environment
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.content.pm.PackageManager
@@ -12,6 +14,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -63,10 +66,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val Midnight = Color(0xFF090D18)
+private val Midnight = Color(0xFF05070B)
 private val Petal = Color(0xFFFFB8D2)
 private val Ink = Color(0xFFE9ECF6)
-private val Glass = Color(0x22FFFFFF)
+private val Glass = Color(0x18FFFFFF)
 
 private const val RELEASES_URL = "https://github.com/projectosdev/bloom-tv-os/releases"
 private const val LATEST_RELEASE_API = "https://api.github.com/repos/projectosdev/bloom-tv-os/releases/latest"
@@ -118,6 +121,50 @@ private suspend fun checkForBloomUpdate(context: android.content.Context): Bloom
             connection?.disconnect()
         }
     }
+
+
+private suspend fun downloadAndInstallBloomUpdate(
+    context: android.content.Context,
+    update: BloomUpdate,
+    onStatus: (String) -> Unit
+) {
+    val manager = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
+    val filename = "bloom-update-${update.versionName.replace(Regex("[^A-Za-z0-9._-]"), "_")}.apk"
+    val request = DownloadManager.Request(Uri.parse(update.apkUrl))
+        .setTitle("Bloom update ${update.versionName}")
+        .setDescription("Downloading the latest Bloom update")
+        .setMimeType("application/vnd.android.package-archive")
+        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, filename)
+    val downloadId = manager.enqueue(request)
+    onStatus("Downloading Bloom ${update.versionName}…")
+    val apkUri = withContext(Dispatchers.IO) {
+        repeat(180) {
+            val cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
+            cursor.use {
+                if (it != null && it.moveToFirst()) {
+                    when (it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+                        DownloadManager.STATUS_SUCCESSFUL -> return@withContext manager.getUriForDownloadedFile(downloadId)
+                        DownloadManager.STATUS_FAILED -> {
+                            val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                            throw IllegalStateException("Download failed (code $reason)")
+                        }
+                    }
+                }
+            }
+            delay(1000)
+        }
+        throw IllegalStateException("The download is taking too long. Check your connection and try again.")
+    } ?: throw IllegalStateException("Bloom couldn't access the downloaded update.")
+    withContext(Dispatchers.Main) {
+        onStatus("Download complete. Waiting for installation approval…")
+        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(installIntent)
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -261,6 +308,9 @@ private fun LauncherScreen() {
     var showUpdates by remember { mutableStateOf(false) }
     var showSystemInfo by remember { mutableStateOf(false) }
     var availableUpdate by remember { mutableStateOf<BloomUpdate?>(null) }
+    var updateBusy by remember { mutableStateOf(false) }
+    var updateMessage by remember { mutableStateOf("") }
+    val updateScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         while (true) {
             availableUpdate = checkForBloomUpdate(context)
@@ -451,7 +501,7 @@ private fun LauncherScreen() {
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) it / 35 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
             when {
-                showUpdates -> UpdateScreen(onBack = { showUpdates = false })
+                showUpdates -> UpdateScreen(update = availableUpdate, message = updateMessage, busy = updateBusy, onCheck = { updateScope.launch { availableUpdate = checkForBloomUpdate(context); updateMessage = if (availableUpdate == null) "Bloom is up to date." else "A new version is ready to install." } }, onInstall = { update -> if (!updateBusy) updateScope.launch { updateBusy = true; runCatching { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }.onFailure { updateMessage = it.message ?: "Couldn't install this update." }; updateBusy = false } }, onBack = { showUpdates = false })
                 showSystemInfo -> SystemInfoScreen(onBack = { showSystemInfo = false })
                 else -> {
                 SettingsScreen(
@@ -476,31 +526,35 @@ private fun LauncherScreen() {
 
     availableUpdate?.let { update ->
         AlertDialog(
-            onDismissRequest = { availableUpdate = null },
+            onDismissRequest = { if (!updateBusy) availableUpdate = null },
             title = { Text("A Bloom update is ready") },
             text = {
                 Column {
-                    Text("Bloom ${update.versionName} is available. You're running an older version.")
+                    Text("Bloom ${update.versionName} is ready. Download and install it without leaving Bloom.")
                     if (update.notes.isNotBlank()) {
                         Spacer(Modifier.height(10.dp))
-                        Text(update.notes.take(900), style = MaterialTheme.typography.bodySmall)
+                        Text(update.notes.take(700), style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (updateMessage.isNotBlank()) {
+                        Spacer(Modifier.height(10.dp))
+                        Text(updateMessage, style = MaterialTheme.typography.bodySmall, color = Petal)
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    availableUpdate = null
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.apkUrl)))
-                    }.onFailure {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl)))
+                TextButton(enabled = !updateBusy, onClick = {
+                    updateScope.launch {
+                        updateBusy = true
+                        runCatching { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }
+                            .onFailure { updateMessage = it.message ?: "Couldn't download the update." }
+                        updateBusy = false
                     }
-                }) { Text("Download update") }
+                }) { Text(if (updateBusy) "Downloading…" else "Update Bloom") }
             },
             dismissButton = {
-                TextButton(onClick = { availableUpdate = null }) { Text("Later") }
+                TextButton(enabled = !updateBusy, onClick = { availableUpdate = null }) { Text("Later") }
             },
-            containerColor = Color(0xFF202236),
+            containerColor = Color(0xFF171A24),
             titleContentColor = Color.White,
             textContentColor = Ink
         )
@@ -621,75 +675,73 @@ private fun SettingsSwitchRow(
 }
 
 @Composable
-private fun UpdateScreen(onBack: () -> Unit) {
+private fun UpdateScreen(
+    update: BloomUpdate?,
+    message: String,
+    busy: Boolean,
+    onCheck: () -> Unit,
+    onInstall: (BloomUpdate) -> Unit,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
-    var openingReleases by remember { mutableStateOf(false) }
+    val packageInfo = remember {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()
+    }
+    val installedVersion = packageInfo?.versionName ?: "Preview"
     Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 30.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Surface(onClick = onBack, color = Glass, shape = CircleShape, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))) {
-                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink)
-                }
+                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink) }
             }
             Spacer(Modifier.width(18.dp))
             Column {
-                Text("Software update", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
-                Text("Bloom stays fresh.", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
+                Text("Software Update", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
+                Text("Keep Bloom up to date.", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
             }
         }
         Spacer(Modifier.height(28.dp))
         Surface(
-            color = Color(0x332B6657),
-            shape = RoundedCornerShape(22.dp),
-            border = BorderStroke(1.dp, Color(0x667BD8B1))
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFF171D2A),
+            shape = RoundedCornerShape(26.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
         ) {
-            Row(Modifier.fillMaxWidth().padding(22.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(54.dp).background(Color(0x334CC99A), CircleShape), contentAlignment = Alignment.Center) {
-                    Text("✓", color = Color(0xFF9CE6C5), fontSize = 27.sp, fontWeight = FontWeight.Light)
+            Column(Modifier.padding(26.dp)) {
+                Text("BLOOM SOFTWARE", color = Petal, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                Text("Bloom ${update?.versionName ?: installedVersion}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Light)
+                Spacer(Modifier.height(6.dp))
+                Text(if (update != null) "A new version is available." else "Installed version · $installedVersion", color = Ink.copy(alpha = 0.68f), fontSize = 13.sp)
+                Spacer(Modifier.height(20.dp))
+                if (update != null) {
+                    Button(onClick = { onInstall(update) }, enabled = !busy,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF111522))) {
+                        Text(if (busy) "Preparing update…" else "Update now")
+                    }
+                    if (update.notes.isNotBlank()) {
+                        Spacer(Modifier.height(18.dp))
+                        Text("WHAT'S NEW", color = Petal, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Text(update.notes.take(1000), color = Ink.copy(alpha = 0.76f), fontSize = 13.sp)
+                    }
+                } else {
+                    Text("You're running the latest version currently known to Bloom.", color = Ink.copy(alpha = 0.76f), fontSize = 14.sp)
+                    Spacer(Modifier.height(18.dp))
+                    Button(onClick = onCheck, enabled = !busy,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF111522))) {
+                        Text(if (busy) "Checking…" else "Check for updates")
+                    }
                 }
-                Spacer(Modifier.width(18.dp))
-                Column {
-                    Text("You're running Bloom Lite", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Installed version 0.1.0", color = Ink.copy(alpha = 0.72f), fontSize = 13.sp)
+                if (message.isNotBlank()) {
+                    Spacer(Modifier.height(14.dp))
+                    Text(message, color = Petal, fontSize = 12.sp)
                 }
             }
         }
-        Spacer(Modifier.height(20.dp))
-        Text("WHAT'S NEW", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-        Column(
-            Modifier.fillMaxWidth().background(Glass, RoundedCornerShape(18.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(18.dp)).padding(20.dp)
-        ) {
-            Text("Preview build 0.1.0", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(10.dp))
-            Text("• Bloom welcome screen and launcher foundation", color = Ink.copy(alpha = 0.75f), fontSize = 13.sp)
-            Text("• New Settings and Software Update pages", color = Ink.copy(alpha = 0.75f), fontSize = 13.sp)
-            Text("• Smoother screen transitions and focus animations", color = Ink.copy(alpha = 0.75f), fontSize = 13.sp)
-            Text("• Motion controls, including Reduce motion", color = Ink.copy(alpha = 0.75f), fontSize = 13.sp)
-        }
         Spacer(Modifier.height(18.dp))
-        Text(
-            "Updates are published as official GitHub releases. Bloom will not claim an update is available until a release has actually been published.",
-            color = Ink.copy(alpha = 0.55f),
-            fontSize = 12.sp
-        )
-        Spacer(Modifier.height(18.dp))
-        Button(
-            onClick = {
-                openingReleases = true
-                runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES_URL)))
-                }.onFailure { openingReleases = false }
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B405F), contentColor = Color.White)
-        ) {
-            Text(if (openingReleases) "Opening GitHub releases…" else "View Bloom releases")
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
-        }
+        Text("Bloom checks for new versions automatically. When one is ready, choose Update now. Your device will ask you to approve the installation.", color = Ink.copy(alpha = 0.52f), fontSize = 12.sp)
         Spacer(Modifier.weight(1f))
-        Text("Updates currently require installing a newer Bloom build manually.", color = Ink.copy(alpha = 0.4f), fontSize = 11.sp)
+        Text("BLOOM TV OS LITE  •  SOFTWARE", color = Ink.copy(alpha = 0.35f), fontSize = 10.sp, letterSpacing = 1.sp)
     }
 }
 
@@ -887,7 +939,7 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, launch: () -> Unit) 
     )
     Surface(
         onClick = launch,
-        modifier = Modifier.width(174.dp).height(142.dp).scale(scale).onFocusChanged { focused = it.isFocused },
+        modifier = Modifier.width(210.dp).height(166.dp).scale(scale).onFocusChanged { focused = it.isFocused },
         color = tileColor,
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) Petal else Color.White.copy(alpha = 0.12f))
