@@ -50,8 +50,32 @@ The current Android application ID is `dev.projectos.bloom`. Keep this ID stable
 The visual direction is an original premium television interface: spacious layouts, restrained glass-like surfaces, readable typography, cinematic colour, clear focus states and controller-friendly navigation. It takes broad inspiration from polished TV interfaces without copying proprietary branding or assets.
 
 
-## Bloom Owner OS (separate edition)
+## Bloom Command Centre (separate owner application)
 
-A separate Android application module named `:owner` has its own application ID (`dev.projectos.bloom.owner`), launcher activity, UI, and preferences. It installs separately and does not replace or modify Bloom TV OS Lite. The preview contains an owner dashboard, local Android settings entry points, owner preferences, and a searchable 1,300-entry capability roadmap. Entries labelled PLANNED are roadmap items, not implemented system controls. Remote fleet management, automatic deployment, and privileged OS administration are not available in this preview.
+The separate `:owner` Android module is the **Bloom Command Centre**, not a second operating system. It has its own launcher application ID (`dev.projectos.bloom.owner`) and remains separate from the standard Bloom TV OS Lite application (`dev.projectos.bloom`). The standard launcher is not modified by owner-console preferences or screens.
+
+The owner console is intended for platform operations: announcements, device fleet management, application catalogue, release management, security, automation, diagnostics, audit history and configuration. The current preview includes a local announcement-draft studio. Drafts are stored on the device running the Command Centre and are **not broadcast** to other installations. Fleet-wide announcements, user administration, remote device commands, authentication, live analytics and staged deployment require a real authenticated backend and device agents; they are not represented as working until that infrastructure exists.
+
+The searchable capability catalogue is a roadmap/index, not a claim that every listed action is implemented. Controls must be labelled by state (working locally, backend required, planned, or unavailable) and must not report success for operations that have not actually run.
 
 The Android build workflow builds both app modules. Download the `bloom-tv-os-lite-debug` artifact and inspect its APK outputs for both editions.
+
+
+## Bloom Test OS (separate sandbox application)
+
+The `:testos` Android module builds a separate `dev.projectos.bloom.testos` application labelled **Bloom Test OS**. It is deliberately separate from the standard Bloom TV OS Lite app and the private owner command centre.
+
+The sandbox includes a TV-style home experience, section navigation, featured app tiles, environment/status panel, a local priority-alert tone preview, and a local restriction-screen simulation with an owner recovery action. The restriction simulation affects only that test installation. It is not a remote lock mechanism.
+
+The Android build workflow publishes a separate `bloom-test-os-debug` artifact. The owner console's global operations, fleet commands, announcement broadcasts, emergency alert delivery and remote restriction controls still require a secure authenticated backend and enrolled test devices. Until that service exists, command records are queued locally and clearly marked as not delivered. Do not treat UI previews as live global operations.
+
+### Planned test-environment administration
+
+- Test fleet enrolment, device heartbeat, online/offline state and capability inventory.
+- Scoped maintenance mode, restart requests and configuration refresh.
+- Announcement and Bloom priority-alert delivery with acknowledgements and expiry.
+- Trust & Enforcement case records, evidence notes, temporary restrictions, appeal/review and owner recovery.
+- App allow/deny policy, release rings, staged rollout, rollback and compatibility checks.
+- Health telemetry, diagnostics, crash summaries, event timeline, exportable audit history and owner session security.
+
+Restrictions must be scoped to enrolled test devices, based on documented policy decisions, time-limited where practical, and reversible through a logged owner recovery path.
