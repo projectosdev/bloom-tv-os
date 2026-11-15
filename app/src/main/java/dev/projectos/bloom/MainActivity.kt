@@ -1453,33 +1453,57 @@ private fun QuickToggleCard(title: String, subtitle: String, checked: Boolean, o
 
 @Composable
 private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (TvApp) -> Unit, onSettings: () -> Unit) {
+    val context = LocalContext.current
     var query by remember { mutableStateOf("") }
     val matches = remember(apps, query) { apps.filter { it.title.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) } }
+    val storeMatches = remember(query) { bloomStoreApps.filter { query.isBlank() || it.name.contains(query, ignoreCase = true) || it.category.contains(query, ignoreCase = true) || it.description.contains(query, ignoreCase = true) } }
     Column(Modifier.fillMaxSize().background(Color(0xF8070B16)).padding(horizontal = 54.dp, vertical = 30.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("← Back", color = BloomAccent.value) }
             Spacer(Modifier.width(14.dp))
             Text("Bloom Search", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light)
         }
-        Spacer(Modifier.height(18.dp))
-        OutlinedTextField(value = query, onValueChange = { query = it.take(60) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search apps on this device") }, placeholder = { Text("Try Netflix, Spotify or ChatGPT") }, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = BloomAccent.value, unfocusedBorderColor = Color.White.copy(alpha = 0.2f), focusedLabelColor = BloomAccent.value, unfocusedLabelColor = Ink.copy(alpha = 0.6f), cursorColor = BloomAccent.value))
         Spacer(Modifier.height(14.dp))
-        Text("INSTALLED APPS  •  ${matches.size} RESULTS", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp)
+        OutlinedTextField(value = query, onValueChange = { query = it.take(60) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search Bloom") }, placeholder = { Text("Installed apps, Store apps or categories") }, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = BloomAccent.value, unfocusedBorderColor = Color.White.copy(alpha = 0.2f), focusedLabelColor = BloomAccent.value, unfocusedLabelColor = Ink.copy(alpha = 0.6f), cursorColor = BloomAccent.value))
         Spacer(Modifier.height(10.dp))
-        if (matches.isEmpty()) Text(if (query.isBlank()) "Start typing to find an installed app." else "No installed apps match that search.", color = Ink.copy(alpha = 0.65f))
-        else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            item { Text("INSTALLED APPS  •  ${matches.size}", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp) }
+            if (matches.isEmpty()) item { Text("No installed apps match.", color = Ink.copy(alpha = 0.58f), fontSize = 11.sp) }
             items(matches) { app ->
-                Surface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth(), color = Glass, shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
-                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 22.sp, modifier = Modifier.width(40.dp))
-                        Column(Modifier.weight(1f)) { Text(app.title, color = Color.White, fontWeight = FontWeight.SemiBold); Text(app.packageName, color = Ink.copy(alpha = 0.45f), fontSize = 10.sp) }
-                        Text("Open  ›", color = BloomAccent.value, fontSize = 12.sp)
+                Surface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth(), color = Glass, shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
+                    Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 21.sp, modifier = Modifier.width(38.dp))
+                        Column(Modifier.weight(1f)) { Text(app.title, color = Color.White, fontWeight = FontWeight.SemiBold); Text(app.packageName, color = Ink.copy(alpha = 0.45f), fontSize = 9.sp) }
+                        Text("Open  ›", color = BloomAccent.value, fontSize = 11.sp)
                     }
                 }
             }
+            item { Spacer(Modifier.height(8.dp)); Text("BLOOM STORE  •  ${storeMatches.size}", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp) }
+            items(storeMatches) { app ->
+                Surface(onClick = {
+                    val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${app.packageName}"))
+                    val web = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/details?id=${app.packageName}"))
+                    runCatching { if (market.resolveActivity(context.packageManager) != null) context.startActivity(market) else context.startActivity(web) }
+                }, modifier = Modifier.fillMaxWidth(), color = Glass, shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))) {
+                    Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(app.name.take(1).uppercase(), color = BloomAccent.value, fontSize = 21.sp, modifier = Modifier.width(38.dp))
+                        Column(Modifier.weight(1f)) { Text(app.name, color = Color.White, fontWeight = FontWeight.SemiBold); Text(app.category + "  •  " + app.badge, color = Ink.copy(alpha = 0.45f), fontSize = 9.sp) }
+                        Text("Get app  ↗", color = BloomAccent.value, fontSize = 11.sp)
+                    }
+                }
+            }
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text("DEVICE SETTINGS", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SystemSettingButton("Wi-Fi", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    SystemSettingButton("Bluetooth", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    SystemSettingButton("Display", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    SystemSettingButton("Sound", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_SOUND_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                }
+            }
         }
-        Spacer(Modifier.weight(1f))
-        TextButton(onClick = onSettings) { Text("Search settings instead  →", color = BloomAccent.value) }
+        TextButton(onClick = onSettings) { Text("Open all Bloom settings  →", color = BloomAccent.value) }
     }
 }
 
