@@ -1,5 +1,6 @@
 package dev.projectos.bloom
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.app.DownloadManager
 import android.os.Environment
@@ -10,6 +11,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Build
 import org.json.JSONObject
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +67,7 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.widget.Toast
 
 private val Midnight = Color(0xFF050812)
 private val BloomAccent = mutableStateOf(Color(0xFFB8C7FF))
@@ -94,31 +97,40 @@ private suspend fun checkForBloomUpdate(context: android.content.Context): Bloom
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("User-Agent", "Bloom-TV-OS-Lite")
             }
-            if (connection.responseCode != HttpURLConnection.HTTP_OK) return@withContext null
+            val responseCode = connection.responseCode
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw IOException("GitHub returned HTTP $responseCode while checking for updates.")
+            }
             val release = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
             val tag = release.optString("tag_name")
-            val latestCode = tag.substringAfterLast('.').toLongOrNull() ?: return@withContext null
+            val latestCode = tag.substringAfterLast('.').toLongOrNull()
+                ?: throw IOException("The latest Bloom release has an invalid version tag.")
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             val installedCode = if (Build.VERSION.SDK_INT >= 28) packageInfo.longVersionCode else packageInfo.versionCode.toLong()
             if (latestCode <= installedCode) return@withContext null
-            val assets = release.optJSONArray("assets") ?: return@withContext null
+            val assets = release.optJSONArray("assets")
+                ?: throw IOException("The latest Bloom release does not include downloadable assets.")
             var apkUrl: String? = null
             for (index in 0 until assets.length()) {
                 val asset = assets.optJSONObject(index) ?: continue
                 if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
-                    apkUrl = asset.optString("browser_download_url").takeIf { it.startsWith("https://") }
+                    apkUrl = asset.optString("browser_download_url").takeIf {
+                        it.startsWith("https://github.com/projectosdev/bloom-tv-os/releases/download/")
+                    }
                     break
                 }
             }
-            val download = apkUrl ?: return@withContext null
+            val download = apkUrl
+                ?: throw IOException("The latest Bloom release does not include a trusted APK download.")
+            val releaseUrl = release.optString("html_url")
+                .takeIf { it.startsWith("https://github.com/projectosdev/bloom-tv-os/releases/") }
+                ?: RELEASES_URL
             BloomUpdate(
                 versionName = tag.removePrefix("v"),
                 notes = release.optString("body").ifBlank { "Bug fixes and improvements." },
                 apkUrl = download,
-                releaseUrl = release.optString("html_url", RELEASES_URL)
+                releaseUrl = releaseUrl
             )
-        } catch (_: Exception) {
-            null
         } finally {
             connection?.disconnect()
         }
@@ -130,6 +142,24 @@ private suspend fun downloadAndInstallBloomUpdate(
     update: BloomUpdate,
     onStatus: (String) -> Unit
 ) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        !context.packageManager.canRequestPackageInstalls()
+    ) {
+        withContext(Dispatchers.Main) {
+            val settingsIntent = Intent(
+                android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:${context.packageName}")
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(settingsIntent)
+                onStatus("Allow Bloom to install apps in Android settings, then return and choose Update now again.")
+            } catch (_: ActivityNotFoundException) {
+                onStatus("Android is blocking app installation. Enable Install unknown apps for Bloom in Settings, then try again.")
+            }
+        }
+        return
+    }
+
     val manager = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
     val filename = "bloom-update-${update.versionName.replace(Regex("[^A-Za-z0-9._-]"), "_")}.apk"
     val request = DownloadManager.Request(Uri.parse(update.apkUrl))
@@ -199,16 +229,6 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
         }
     }
 
-    if (!discovered.containsKey("com.openai.chatgpt")) {
-        discovered["com.openai.chatgpt"] = TvApp(
-            "ChatGPT",
-            "com.openai.chatgpt",
-            "",
-            Intent.CATEGORY_LAUNCHER,
-            "OpenAI assistant"
-        )
-    }
-
     return discovered.values.sortedWith(
         compareBy<TvApp> { if (it.packageName == "com.openai.chatgpt") 0 else 1 }
             .thenBy { it.title.lowercase() }
@@ -216,20 +236,22 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
 }
 
 private fun launchBloomApp(context: android.content.Context, app: TvApp) {
-    if (app.packageName == "com.openai.chatgpt") {
-        val installedIntent = context.packageManager.getLaunchIntentForPackage("com.openai.chatgpt")
-        if (installedIntent != null) {
-            context.startActivity(installedIntent)
-        } else {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com")))
-        }
-        return
+    val launchIntent = if (app.packageName == "com.openai.chatgpt") {
+        context.packageManager.getLaunchIntentForPackage("com.openai.chatgpt")
+            ?: Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com"))
+    } else {
+        Intent(Intent.ACTION_MAIN)
+            .addCategory(app.launcherCategory)
+            .setClassName(app.packageName, app.activityName)
     }
 
-    val launchIntent = Intent(Intent.ACTION_MAIN)
-        .addCategory(app.launcherCategory)
-        .setClassName(app.packageName, app.activityName)
-    context.startActivity(launchIntent)
+    try {
+        context.startActivity(launchIntent)
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "${app.title} is no longer available on this device.", Toast.LENGTH_SHORT).show()
+    } catch (_: SecurityException) {
+        Toast.makeText(context, "Android blocked ${app.title} from opening.", Toast.LENGTH_SHORT).show()
+    }
 }
 
 @Composable
@@ -325,7 +347,13 @@ private fun LauncherScreen() {
     val updateScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         while (true) {
-            availableUpdate = checkForBloomUpdate(context)
+            val check = runCatching { checkForBloomUpdate(context) }
+            if (check.isSuccess) {
+                availableUpdate = check.getOrNull()
+                updateMessage = ""
+            } else {
+                updateMessage = "Couldn't check for updates. Check your internet connection and try again."
+            }
             kotlinx.coroutines.delay(6 * 60 * 60 * 1000L)
         }
     }
@@ -601,7 +629,17 @@ private fun LauncherScreen() {
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) it / 35 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
             when {
-                showUpdates -> UpdateScreen(update = availableUpdate, message = updateMessage, busy = updateBusy, onCheck = { updateScope.launch { availableUpdate = checkForBloomUpdate(context); updateMessage = if (availableUpdate == null) "Bloom is up to date." else "A new version is ready to install." } }, onInstall = { update -> if (!updateBusy) updateScope.launch { updateBusy = true; runCatching { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }.onFailure { updateMessage = it.message ?: "Couldn't install this update." }; updateBusy = false } }, onBack = { showUpdates = false })
+                showUpdates -> UpdateScreen(update = availableUpdate, message = updateMessage, busy = updateBusy, onCheck = {
+                    updateScope.launch {
+                        val check = runCatching { checkForBloomUpdate(context) }
+                        if (check.isSuccess) {
+                            availableUpdate = check.getOrNull()
+                            updateMessage = if (availableUpdate == null) "Bloom is up to date." else "A new version is ready to install."
+                        } else {
+                            updateMessage = "Couldn't check for updates. Check your internet connection and try again."
+                        }
+                    }
+                }, onInstall = { update -> if (!updateBusy) updateScope.launch { updateBusy = true; runCatching { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }.onFailure { updateMessage = it.message ?: "Couldn't install this update." }; updateBusy = false } }, onBack = { showUpdates = false })
                 showSystemInfo -> SystemInfoScreen(onBack = { showSystemInfo = false })
                 else -> {
                 SettingsScreen(
@@ -645,7 +683,7 @@ private fun LauncherScreen() {
             title = { Text("A Bloom update is ready") },
             text = {
                 Column {
-                    Text("Bloom ${update.versionName} is ready. Download and install it without leaving Bloom.")
+                    Text("Bloom ${update.versionName} is ready. Download the APK and approve installation through Android.")
                     if (update.notes.isNotBlank()) {
                         Spacer(Modifier.height(10.dp))
                         Text(update.notes.take(700), style = MaterialTheme.typography.bodySmall)
@@ -834,6 +872,15 @@ private fun UpdateScreen(
                     Button(onClick = { onInstall(update) }, enabled = !busy,
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF111522))) {
                         Text(if (busy) "Preparing update…" else "Update now")
+                    }
+                    TextButton(onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl)))
+                        }.onFailure {
+                            Toast.makeText(context, "No browser is available to open the release page.", Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                        Text("View release notes")
                     }
                     if (update.notes.isNotBlank()) {
                         Spacer(Modifier.height(18.dp))
@@ -1214,9 +1261,7 @@ private fun BloomSignUpScreen(
                 Text("B L O O M   /   YOUR SPACE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(18.dp))
                 Text(
-                    if (initialName.isBlank()) "A screen that
-feels like yours." else "Make Bloom
-your own.",
+                    if (initialName.isBlank()) "A screen that\nfeels like yours." else "Make Bloom\nyour own.",
                     color = Color.White, fontSize = 43.sp, lineHeight = 49.sp, fontWeight = FontWeight.Light
                 )
                 Spacer(Modifier.height(13.dp))

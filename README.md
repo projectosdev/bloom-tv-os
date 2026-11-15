@@ -9,7 +9,7 @@ A lightweight, remote-first Android TV launcher concept with a liquid-glass-insp
 - Detection and launching of selected official streaming apps already installed on the device.
 - Lightweight home screen designed for TV remote navigation.
 - Settings screen with software update information and motion preferences.
-- Software Update checks published GitHub releases and opens the official release page; it is not an OTA or silent installer.
+- Software Update checks the official GitHub Releases feed, downloads a published APK, and hands it to Android's package installer for explicit user approval. It does not silently install updates or replace device firmware.
 
 ## Get a test APK
 A free GitHub Actions workflow builds a debug APK whenever the feature branch is updated or its pull request is checked.
@@ -21,7 +21,7 @@ A free GitHub Actions workflow builds a debug APK whenever the feature branch is
 5. Transfer the APK to your Android TV / Google TV device, open it, and allow installation from the file manager if Android asks.
 6. Launch **Bloom TV OS Lite**. If you want to test it as your Home app, use your device's Home-app settings to select it.
 
-GitHub keeps each build artifact for 7 days. These are debug-signed test builds, not production releases. Hosted runners may use different debug signing keys between runs, so a newer APK may not install over an older one. If Android rejects an update because the signature differs, uninstall the previous Bloom test build before installing the new APK; this clears Bloom's local profile and settings. You may need to sign in to GitHub to download an artifact.
+GitHub keeps each build artifact for 7 days. The workflow also publishes preview APKs as GitHub Releases so Bloom's Software Update screen can find them. These are debug-signed test builds, not production releases. Android may ask you to allow Bloom to install unknown apps before an update can be handed to the package installer. Hosted runners may use different debug signing keys between runs, so a newer APK may not install over an older one. If Android rejects an update because the signature differs, uninstall the previous Bloom test build before installing the new APK; this clears Bloom's local profile and settings. You may need to sign in to GitHub to download an artifact.
 
 ## Build locally
 Open the project in Android Studio with JDK 17 and Android SDK 35 installed. Sync Gradle and build the app module, or run:
