@@ -14,7 +14,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -257,7 +256,7 @@ private fun BloomRoot() {
                 favourite = app.packageName in favourites,
                 accent = activeAccent,
                 onLaunch = { selectedApp = null; openApp(app) },
-                onFavourite = { toggleFavourite(app); selectedApp = app.copy(isFavourite = app.packageName !in favourites) },
+                onFavourite = { toggleFavourite(app) },
                 onClose = { selectedApp = null },
                 onAppInfo = {
                     selectedApp = null
@@ -482,7 +481,7 @@ private fun AppShelf(
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(13.dp), contentPadding = PaddingValues(vertical = 7.dp)) {
         items(apps, key = { it.packageName }) { app ->
-            AppTile(app, app.packageName in emptySet<String>(), compact, accent, onOpen = { onOpen(app) }, onDetails = { onSelect(app) }, onFavourite = { onFavourite(app) })
+            AppTile(app, compact, accent, onOpen = { onOpen(app) }, onDetails = { onSelect(app) }, onFavourite = { onFavourite(app) })
         }
     }
 }
@@ -490,7 +489,6 @@ private fun AppShelf(
 @Composable
 private fun AppTile(
     app: TvApp,
-    unused: Boolean,
     compact: Boolean,
     accent: Color,
     onOpen: () -> Unit,
