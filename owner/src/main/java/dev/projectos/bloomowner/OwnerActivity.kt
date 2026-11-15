@@ -1,6 +1,7 @@
 package dev.projectos.bloomowner
 
 import android.content.Intent
+import android.media.RingtoneManager
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -43,7 +44,7 @@ class OwnerActivity : ComponentActivity() {
 }
 
 private enum class Page(val title: String) {
-    HOME("Command centre"), ANNOUNCEMENTS("Announcements"), LIBRARY("Control library"), DEVICES("Devices"), APPS("Applications"),
+    HOME("Command centre"), ANNOUNCEMENTS("Announcements"), EMERGENCY("Emergency alerts"), LIBRARY("Control library"), DEVICES("Devices"), APPS("Applications"),
     UPDATES("Updates"), SECURITY("Security"), AUTOMATION("Automation"), SETTINGS("Owner settings")
 }
 private val categories = listOf(
@@ -90,6 +91,7 @@ private fun OwnerConsole() {
             when (page) {
                 Page.HOME -> Home(accent) { page = it }
                 Page.ANNOUNCEMENTS -> Announcements(accent)
+                Page.EMERGENCY -> EmergencyAlerts(accent)
                 Page.LIBRARY -> Library(query, { query = it }, category, { category = it }, accent)
                 Page.DEVICES -> Management("Device management", "This preview manages the Android device on which Owner OS is installed.", listOf("Device identity","Hardware summary","Android version","Display information","Network settings"), accent) { context.startActivity(Intent(Settings.ACTION_DEVICE_INFO_SETTINGS)) }
                 Page.APPS -> Management("Application management", "Manage applications using Android's supported settings.", listOf("Installed apps","Default launcher","App permissions","Special access","Storage usage"), accent) { context.startActivity(Intent(Settings.ACTION_APPLICATION_SETTINGS)) }
@@ -128,7 +130,7 @@ private fun Home(accent: Color, open: (Page) -> Unit) {
         }
         Text("MANAGEMENT CENTRE", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf(Page.ANNOUNCEMENTS, Page.LIBRARY, Page.DEVICES, Page.UPDATES).forEach { p ->
+            listOf(Page.EMERGENCY, Page.ANNOUNCEMENTS, Page.LIBRARY, Page.UPDATES).forEach { p ->
                 Column(Modifier.weight(1f).height(90.dp).background(Panel, RoundedCornerShape(15.dp)).clickable { open(p) }.focusable().padding(13.dp)) {
                     Text(p.title, color = White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Text("Open management", color = accent, fontSize = 10.sp)
@@ -179,6 +181,62 @@ private fun Announcements(accent: Color) {
                 TextButton(onClick = { prefs.edit().remove("draft").apply(); saved = ""; status = "Draft deleted." }) { Text("Delete draft", color = Muted) }
             }
         }
+    }
+}
+
+
+@Composable
+private fun EmergencyAlerts(accent: Color) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("bloom_owner_emergency_alerts", android.content.Context.MODE_PRIVATE) }
+    var title by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+    var soundEnabled by remember { mutableStateOf(true) }
+    var status by remember { mutableStateOf("") }
+    var saved by remember { mutableStateOf(prefs.getString("draft", "") ?: "") }
+    Column(Modifier.fillMaxWidth().fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Emergency alert centre", color = White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Prepare a high-priority Bloom service notice for enrolled devices. This preview stores drafts locally; it does not broadcast alerts or contact emergency services.", color = Muted, fontSize = 12.sp)
+        Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(16.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("NEW PRIORITY ALERT", color = Color(0xFFFF9A91), fontSize = 10.sp, letterSpacing = 2.sp)
+            BasicTextField(title, { title = it }, singleLine = true, modifier = Modifier.fillMaxWidth().background(Raised, RoundedCornerShape(9.dp)).padding(13.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White, fontSize = 14.sp), decorationBox = { inner -> if(title.isEmpty()) Text("Alert heading", color = Muted); inner() })
+            BasicTextField(message, { message = it }, modifier = Modifier.fillMaxWidth().heightIn(min = 110.dp).background(Raised, RoundedCornerShape(9.dp)).padding(13.dp), textStyle = androidx.compose.ui.text.TextStyle(color = White, fontSize = 13.sp), decorationBox = { inner -> if(message.isEmpty()) Text("Explain what Bloom users need to know…", color = Muted); inner() })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Play warning sound", color = White, fontSize = 13.sp)
+                    Text("Uses the device's normal notification sound when an alert is received.", color = Muted, fontSize = 10.sp)
+                }
+                Switch(soundEnabled, { soundEnabled = it })
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    try {
+                        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                        val ringtone = RingtoneManager.getRingtone(context, uri)
+                        if (ringtone != null) { ringtone.play(); status = "Local sound preview played on this device." }
+                        else status = "No default notification sound is configured."
+                    } catch (e: Exception) { status = "Sound preview unavailable on this device." }
+                }, colors = ButtonDefaults.buttonColors(containerColor = Raised)) { Text("Preview warning sound", color = White) }
+                Button(onClick = {
+                    if (title.isBlank() || message.isBlank()) status = "Add an alert heading and message first."
+                    else {
+                        saved = title + "\n" + message + "\nWarning sound: " + (if (soundEnabled) "enabled" else "disabled")
+                        prefs.edit().putString("draft", saved).putBoolean("sound_enabled", soundEnabled).apply()
+                        status = "Alert draft saved locally. No devices have been alerted."
+                    }
+                }, colors = ButtonDefaults.buttonColors(containerColor = accent)) { Text("Save alert draft", color = Ink) }
+            }
+            if (status.isNotBlank()) Text(status, color = accent, fontSize = 11.sp)
+        }
+        if (saved.isNotBlank()) {
+            Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(16.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("LATEST ALERT DRAFT", color = Color(0xFFFF9A91), fontSize = 10.sp, letterSpacing = 2.sp)
+                Text(saved, color = White, fontSize = 13.sp)
+                Text("LOCAL ONLY · NOT BROADCAST", color = Color(0xFFEBC68E), fontSize = 10.sp)
+                TextButton(onClick = { prefs.edit().remove("draft").apply(); saved = ""; status = "Alert draft deleted." }) { Text("Delete draft", color = Muted) }
+            }
+        }
+        Text("Production requirement: an authenticated alert service, enrolled-device delivery, delivery receipts, expiry, audit logs and rate limits. Alerts must be genuine Bloom service notices, not presented as official government or public emergency warnings.", color = Muted, fontSize = 11.sp)
     }
 }
 
