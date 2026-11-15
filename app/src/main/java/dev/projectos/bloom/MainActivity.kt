@@ -148,6 +148,7 @@ private fun BloomRoot() {
                     profileName = profileName,
                     accent = activeAccent,
                     compactTiles = compactTiles,
+                    motionEnabled = motion,
                     onOpen = ::openApp,
                     onSelect = { selectedApp = it },
                     onToggleFavourite = ::toggleFavourite,
@@ -162,6 +163,7 @@ private fun BloomRoot() {
                     search = search,
                     onlyFavourites = onlyFavourites,
                     compactTiles = compactTiles,
+                    motionEnabled = motion,
                     accent = activeAccent,
                     onSearch = { search = it },
                     onFilter = { onlyFavourites = it },
@@ -347,6 +349,7 @@ private fun HomePage(
     profileName: String,
     accent: Color,
     compactTiles: Boolean,
+    motionEnabled: Boolean,
     onOpen: (TvApp) -> Unit,
     onSelect: (TvApp) -> Unit,
     onToggleFavourite: (TvApp) -> Unit,
@@ -374,7 +377,7 @@ private fun HomePage(
             if (favouriteApps.isEmpty()) {
                 SmallHint("Your favourite apps will appear here. Open an app's details to pin it.")
             } else {
-                AppShelf(favouriteApps, compactTiles, accent, onOpen, onSelect, onToggleFavourite)
+                AppShelf(favouriteApps, compactTiles, motionEnabled, accent, onOpen, onSelect, onToggleFavourite)
             }
         }
         item {
@@ -382,7 +385,7 @@ private fun HomePage(
                 SectionHeading("AVAILABLE ON THIS DEVICE", accent)
                 TextButton(onClick = onRefresh) { Text("Refresh", color = Muted) }
             }
-            if (apps.isEmpty()) EmptyApps(onDiscover) else AppShelf(apps.take(12), compactTiles, accent, onOpen, onSelect, onToggleFavourite)
+            if (apps.isEmpty()) EmptyApps(onDiscover) else AppShelf(apps.take(12), compactTiles, motionEnabled, accent, onOpen, onSelect, onToggleFavourite)
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -423,6 +426,7 @@ private fun AppsPage(
     search: String,
     onlyFavourites: Boolean,
     compactTiles: Boolean,
+    motionEnabled: Boolean,
     accent: Color,
     onSearch: (String) -> Unit,
     onFilter: (Boolean) -> Unit,
@@ -474,6 +478,7 @@ private fun AppsPage(
 private fun AppShelf(
     apps: List<TvApp>,
     compact: Boolean,
+    motionEnabled: Boolean,
     accent: Color,
     onOpen: (TvApp) -> Unit,
     onSelect: (TvApp) -> Unit,
@@ -481,7 +486,7 @@ private fun AppShelf(
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(13.dp), contentPadding = PaddingValues(vertical = 7.dp)) {
         items(apps, key = { it.packageName }) { app ->
-            AppTile(app, compact, accent, onOpen = { onOpen(app) }, onDetails = { onSelect(app) }, onFavourite = { onFavourite(app) })
+            AppTile(app, compact, motionEnabled, accent, onOpen = { onOpen(app) }, onDetails = { onSelect(app) }, onFavourite = { onFavourite(app) })
         }
     }
 }
@@ -490,6 +495,7 @@ private fun AppShelf(
 private fun AppTile(
     app: TvApp,
     compact: Boolean,
+    motionEnabled: Boolean,
     accent: Color,
     onOpen: () -> Unit,
     onDetails: () -> Unit,
@@ -500,7 +506,7 @@ private fun AppTile(
     Surface(
         onClick = onOpen,
         modifier = Modifier.width(if (compact) 142.dp else 166.dp).height(if (compact) 104.dp else 119.dp)
-            .onFocusChanged { focused = it.isFocused }.scale(if (focused) 1.035f else 1f),
+            .onFocusChanged { focused = it.isFocused }.scale(if (focused && motionEnabled) 1.035f else 1f),
         color = bg,
         shape = RoundedCornerShape(18.dp),
         border = BorderStroke(if (focused) 1.5.dp else 1.dp, if (focused) accent.copy(alpha = .8f) else Hairline)
@@ -511,7 +517,8 @@ private fun AppTile(
                     Text(app.title.take(1).uppercase(), color = accent, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = onDetails, modifier = Modifier.size(30.dp)) { Icon(Icons.Rounded.MoreHoriz, "App details", tint = Muted) }
+                IconButton(onClick = onFavourite, modifier = Modifier.size(27.dp)) { Icon(Icons.Rounded.FavoriteBorder, "Toggle favourite", tint = accent, modifier = Modifier.size(16.dp)) }
+                IconButton(onClick = onDetails, modifier = Modifier.size(27.dp)) { Icon(Icons.Rounded.Info, "App details", tint = Muted, modifier = Modifier.size(16.dp)) }
             }
             Column {
                 Text(app.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
