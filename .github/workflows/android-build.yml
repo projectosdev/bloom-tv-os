@@ -30,6 +30,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-35 build-tools;35.0.0'
 
       - name: Install Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -39,8 +41,13 @@ jobs:
       - name: Generate Gradle wrapper
         run: gradle wrapper --gradle-version 8.9
 
+      - name: Set preview version
+        run: |
+          echo "BLOOM_VERSION_CODE=$((GITHUB_RUN_NUMBER + 2))" >> "$GITHUB_ENV"
+          echo "BLOOM_VERSION_NAME=0.2.$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+
       - name: Build debug APK
-        run: ./gradlew --no-daemon clean assembleDebug
+        run: ./gradlew --no-daemon clean assembleDebug -PbloomVersionCode=$BLOOM_VERSION_CODE -PbloomVersionName=$BLOOM_VERSION_NAME
 
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v4
