@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -102,10 +103,9 @@ private fun OwnerConsole() {
 @Composable
 private fun NavItem(label: String, selected: Boolean, accent: Color, click: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp).background(if (selected) accent.copy(alpha=.14f) else Color.Transparent, RoundedCornerShape(11.dp)).border(if(focused) 1.dp else 0.dp, if(focused) accent else Color.Transparent, RoundedCornerShape(11.dp)).onFocusChanged { focused = it.isFocused }.focusable().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp).background(if (selected) accent.copy(alpha=.14f) else Color.Transparent, RoundedCornerShape(11.dp)).border(if(focused) 1.dp else 0.dp, if(focused) accent else Color.Transparent, RoundedCornerShape(11.dp)).onFocusChanged { focused = it.isFocused }.clickable { click() }.focusable().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = if(selected) accent else White, fontSize = 13.sp, fontWeight = if(selected) FontWeight.Bold else FontWeight.Medium)
     }
-    androidx.compose.foundation.clickable
 }
 
 @Composable
@@ -127,7 +127,7 @@ private fun Home(accent: Color, open: (Page) -> Unit) {
         Text("MANAGEMENT CENTRE", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf(Page.LIBRARY, Page.DEVICES, Page.APPS, Page.UPDATES).forEach { p ->
-                Column(Modifier.weight(1f).height(90.dp).background(Panel, RoundedCornerShape(15.dp)).focusable().padding(13.dp)) {
+                Column(Modifier.weight(1f).height(90.dp).background(Panel, RoundedCornerShape(15.dp)).clickable { open(p) }.focusable().padding(13.dp)) {
                     Text(p.title, color = White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Text("Open management", color = accent, fontSize = 10.sp)
                 }
