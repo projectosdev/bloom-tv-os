@@ -66,10 +66,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val Midnight = Color(0xFF05070B)
-private val Petal = Color(0xFFFFB8D2)
+private val Midnight = Color(0xFF050812)
+private val Petal = Color(0xFFB8C7FF)
 private val Ink = Color(0xFFE9ECF6)
-private val Glass = Color(0x18FFFFFF)
+private val Glass = Color(0x20FFFFFF)
 
 private const val RELEASES_URL = "https://github.com/projectosdev/bloom-tv-os/releases"
 private const val LATEST_RELEASE_API = "https://api.github.com/repos/projectosdev/bloom-tv-os/releases/latest"
@@ -234,11 +234,12 @@ private fun launchBloomApp(context: android.content.Context, app: TvApp) {
 private fun BloomRoot() {
     var booting by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { delay(2600); booting = false }
-    Box(
-        Modifier.fillMaxSize().background(
-            Brush.linearGradient(listOf(Color(0xFF152039), Midnight, Color(0xFF28192C)))
-        )
-    ) {
+    val atmosphere = rememberInfiniteTransition(label = "bloom-atmosphere")
+    val drift by atmosphere.animateFloat(-38f, 38f, infiniteRepeatable(tween(9000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "atmosphere-drift")
+    val glow by atmosphere.animateFloat(0.55f, 0.95f, infiniteRepeatable(tween(5200), RepeatMode.Reverse), label = "atmosphere-glow")
+    Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF111D39), Midnight, Color(0xFF21172F))))) {
+        Box(Modifier.offset(x = drift.dp, y = (-110).dp).size(520.dp).background(Brush.radialGradient(listOf(Color(0x665D78D9).copy(alpha = glow), Color.Transparent)), CircleShape))
+        Box(Modifier.align(Alignment.BottomEnd).offset(x = 130.dp, y = 150.dp).size(560.dp).background(Brush.radialGradient(listOf(Color(0x554D9FAD), Color.Transparent)), CircleShape))
         if (booting) BootScreen() else LauncherScreen()
     }
 }
@@ -401,12 +402,12 @@ private fun LauncherScreen() {
                     }
                 }
                 Spacer(Modifier.height(48.dp))
-                Text("Welcome home.", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Light)
-                Text("Your entertainment, all in one place.", color = Ink.copy(alpha = 0.7f), fontSize = 15.sp)
+                Text("Your screen. Reimagined.", color = Color.White, fontSize = 38.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
+                Text("A little more atmosphere. A lot more to explore.", color = Ink.copy(alpha = 0.72f), fontSize = 15.sp)
                 Spacer(Modifier.height(24.dp))
                 Surface(
-                    modifier = Modifier.fillMaxWidth().height(154.dp),
-                    color = Color(0x332F2B43),
+                    modifier = Modifier.fillMaxWidth().height(188.dp),
+                    color = Color(0x443D4A70),
                     shape = RoundedCornerShape(26.dp),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.13f))
                 ) {
@@ -419,11 +420,11 @@ private fun LauncherScreen() {
                     ) {
                         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text("YOUR SPACE. YOUR SHOWS.", color = Petal, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                                Text("WELCOME TO BLOOM", color = Petal, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(9.dp))
-                                Text("Everything starts here.", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Light)
+                                Text("Make tonight yours.", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
                                 Spacer(Modifier.height(5.dp))
-                                Text("Open your apps and pick up where you want to go.", color = Ink.copy(alpha = 0.7f), fontSize = 12.sp)
+                                Text("Your favourite entertainment, gathered in one beautiful place.", color = Ink.copy(alpha = 0.76f), fontSize = 13.sp)
                             }
                             Surface(
                                 onClick = { showAppLibrary = true },
@@ -571,57 +572,39 @@ private fun SettingsScreen(
     onSystemInfoClick: () -> Unit,
     onBack: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 30.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 28.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(onClick = onBack, color = Glass, shape = CircleShape, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))) {
-                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink)
-                }
+            Surface(onClick = onBack, color = Glass, shape = CircleShape, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))) {
+                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink) }
             }
-            Spacer(Modifier.width(18.dp))
+            Spacer(Modifier.width(20.dp))
             Column {
-                Text("Settings", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
-                Text("Make Bloom feel like yours.", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
+                Text("Bloom Settings", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
+                Text("Your space, your rules.", color = Ink.copy(alpha = 0.65f), fontSize = 13.sp)
             }
         }
-        Spacer(Modifier.height(28.dp))
-        Text("SYSTEM", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(12.dp))
-        SettingsRow(
-            title = "Software update",
-            subtitle = "Version 0.1.0  •  View release notes and available builds",
-            trailing = "›",
-            onClick = onUpdatesClick
-        )
-        Spacer(Modifier.height(10.dp))
-        SettingsRow(
-            title = "About this device",
-            subtitle = "View Bloom version, device model and Android details",
-            trailing = "›",
-            onClick = onSystemInfoClick
-        )
-        Spacer(Modifier.height(26.dp))
-        Text("APPEARANCE & MOTION", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(12.dp))
-        SettingsSwitchRow(
-            title = "System animations",
-            subtitle = "Animate screen transitions and app focus states.",
-            checked = animationsEnabled,
-            onCheckedChange = onAnimationsChange
-        )
-        Spacer(Modifier.height(10.dp))
-        SettingsSwitchRow(
-            title = "Reduce motion",
-            subtitle = "Keep movement subtle and minimise animated effects.",
-            checked = reduceMotion,
-            onCheckedChange = onReduceMotionChange
-        )
+        Spacer(Modifier.height(24.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.weight(1.15f)) {
+                Text("SYSTEM", color = Petal, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                SettingsRow("Software Update", "New features and Bloom releases", "↗", onUpdatesClick)
+                Spacer(Modifier.height(12.dp))
+                SettingsRow("About Bloom", "Version, device and system information", "↗", onSystemInfoClick)
+            }
+            Column(Modifier.weight(1f)) {
+                Text("EXPERIENCE", color = Petal, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                SettingsSwitchRow("Bloom Motion", "Expressive transitions and focus effects.", animationsEnabled, onAnimationsChange)
+                Spacer(Modifier.height(12.dp))
+                SettingsSwitchRow("Reduce Motion", "Tone down movement and visual effects.", reduceMotion, onReduceMotionChange)
+            }
+        }
         Spacer(Modifier.weight(1f))
-        Text("BLOOM TV OS LITE  •  PREVIEW 0.1.0", color = Ink.copy(alpha = 0.38f), fontSize = 10.sp, letterSpacing = 1.sp)
+        Text("BLOOM ATMOSPHERE  •  TV OS LITE", color = Ink.copy(alpha = 0.38f), fontSize = 10.sp, letterSpacing = 2.sp)
     }
 }
 
-@Composable
 private fun SettingsRow(title: String, subtitle: String, trailing: String, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val background by animateColorAsState(
@@ -926,20 +909,20 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, launch: () -> Unit) 
         }.getOrNull()
     }
     var focused by remember { mutableStateOf(false) }
-    val targetScale = if (focused && animationsEnabled) 1.045f else 1f
+    val targetScale = if (focused && animationsEnabled) 1.085f else 1f
     val scale by animateFloatAsState(
         targetValue = targetScale,
-        animationSpec = tween(if (animationsEnabled) 190 else 0, easing = FastOutSlowInEasing),
+        animationSpec = tween(if (animationsEnabled) 360 else 0, easing = FastOutSlowInEasing),
         label = "app-tile-scale"
     )
     val tileColor by animateColorAsState(
         targetValue = if (focused) Color(0xFF44364E) else Glass,
-        animationSpec = tween(if (animationsEnabled) 180 else 0),
+        animationSpec = tween(if (animationsEnabled) 320 else 0),
         label = "app-tile-color"
     )
     Surface(
         onClick = launch,
-        modifier = Modifier.width(210.dp).height(166.dp).scale(scale).onFocusChanged { focused = it.isFocused },
+        modifier = Modifier.width(226.dp).height(176.dp).scale(scale).onFocusChanged { focused = it.isFocused },
         color = tileColor,
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) Petal else Color.White.copy(alpha = 0.12f))
