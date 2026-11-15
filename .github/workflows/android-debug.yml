@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-debug:
@@ -43,9 +43,21 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  publish-release:
+    name: Publish Bloom debug release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/settings-updates-animations'
+    needs: build-debug
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: bloom-tv-os-debug
+          path: dist
 
       - name: Publish Bloom release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/settings-updates-animations'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.${{ github.run_number }}
@@ -53,4 +65,4 @@ jobs:
           generate_release_notes: true
           make_latest: true
           target_commitish: feature/settings-updates-animations
-          files: app/build/outputs/apk/debug/*.apk
+          files: dist/*.apk
