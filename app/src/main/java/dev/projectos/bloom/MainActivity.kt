@@ -86,6 +86,26 @@ private data class BloomUpdate(
     val releaseUrl: String
 )
 
+/** Compares numeric dotted versions such as 0.9.12 and 0.10.0. */
+private fun compareBloomVersions(left: String, right: String): Int {
+    fun parts(version: String): List<Long> {
+        val normalized = version.trim().removePrefix("v").substringBefore('-').substringBefore('+')
+        require(Regex("^\\d+(?:\\.\\d+)*$").matches(normalized)) {
+            "Invalid Bloom version: $version"
+        }
+        return normalized.split('.').map { it.toLong() }
+    }
+
+    val leftParts = parts(left)
+    val rightParts = parts(right)
+    for (index in 0 until maxOf(leftParts.size, rightParts.size)) {
+        val a = leftParts.getOrElse(index) { 0L }
+        val b = rightParts.getOrElse(index) { 0L }
+        if (a != b) return a.compareTo(b)
+    }
+    return 0
+}
+
 private suspend fun checkForBloomUpdate(context: android.content.Context): BloomUpdate? =
     withContext(Dispatchers.IO) {
         var connection: HttpURLConnection? = null
@@ -102,12 +122,20 @@ private suspend fun checkForBloomUpdate(context: android.content.Context): Bloom
                 throw IOException("GitHub returned HTTP $responseCode while checking for updates.")
             }
             val release = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-            val tag = release.optString("tag_name")
-            val latestCode = tag.substringAfterLast('.').toLongOrNull()
-                ?: throw IOException("The latest Bloom release has an invalid version tag.")
+            val tag = release.optString("tag_name").trim()
+            val latestVersion = tag.removePrefix("v")
+            if (latestVersion.isBlank()) {
+                throw IOException("The latest Bloom release has an invalid version tag.")
+            }
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            val installedCode = if (Build.VERSION.SDK_INT >= 28) packageInfo.longVersionCode else packageInfo.versionCode.toLong()
-            if (latestCode <= installedCode) return@withContext null
+            val installedVersion = packageInfo.versionName
+                ?: throw IOException("Bloom could not read the installed app version.")
+            val comparison = try {
+                compareBloomVersions(latestVersion, installedVersion)
+            } catch (error: IllegalArgumentException) {
+                throw IOException("Bloom received an unsupported release version tag.", error)
+            }
+            if (comparison <= 0) return@withContext null
             val assets = release.optJSONArray("assets")
                 ?: throw IOException("The latest Bloom release does not include downloadable assets.")
             var apkUrl: String? = null
