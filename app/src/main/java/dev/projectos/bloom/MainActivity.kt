@@ -313,10 +313,10 @@ private fun LauncherScreen() {
     var showControlCentre by remember { mutableStateOf(false) }
     var showBloomSearch by remember { mutableStateOf(false) }
     var showAmbient by remember { mutableStateOf(false) }
+    val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     var showProfiles by remember { mutableStateOf(false) }
     var themeIndex by remember { mutableIntStateOf(preferences.getInt("theme_index", 0).coerceIn(0, BloomThemes.lastIndex)) }
     BloomAccent.value = BloomThemes[themeIndex]
-    val preferences = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     var profileName by remember { mutableStateOf(preferences.getString("profile_name", "").orEmpty()) }
     var showSignUp by remember { mutableStateOf(!preferences.getBoolean("profile_setup_complete", false)) }
     var availableUpdate by remember { mutableStateOf<BloomUpdate?>(null) }
@@ -584,7 +584,11 @@ private fun LauncherScreen() {
             BloomSearchScreen(apps = installed, onBack = { showBloomSearch = false }, onLaunch = { app -> showBloomSearch = false; runCatching { launchBloomApp(context, app) } }, onSettings = { showBloomSearch = false; showSettings = true })
         }
 
-        AnimatedVisibility(visible = showProfiles, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {\n            BloomProfilesScreen(currentName = profileName, onSelect = { name -> profileName = name; preferences.edit().putString("profile_name", name).putBoolean("profile_setup_complete", true).apply(); showProfiles = false }, onBack = { showProfiles = false })\n        }\n\n        AnimatedVisibility(visible = showAmbient, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(350)), exit = fadeOut(tween(220))) {
+        AnimatedVisibility(visible = showProfiles, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+            BloomProfilesScreen(currentName = profileName, onSelect = { name -> profileName = name; preferences.edit().putString("profile_name", name).putBoolean("profile_setup_complete", true).apply(); showProfiles = false }, onBack = { showProfiles = false })
+        }
+
+        AnimatedVisibility(visible = showAmbient, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(350)), exit = fadeOut(tween(220))) {
             BloomAmbientScreen(onExit = { showAmbient = false })
         }
 
@@ -614,7 +618,9 @@ private fun LauncherScreen() {
                         showSystemCards = it
                         preferences.edit().putBoolean("show_system_cards", it).apply()
                     },
-                    themeIndex = themeIndex,\n                    onThemeChange = { index -> themeIndex = index.coerceIn(BloomThemes.indices); BloomAccent.value = BloomThemes[themeIndex]; preferences.edit().putInt("theme_index", themeIndex).apply() },\n                    compactTiles = compactTiles,
+                    themeIndex = themeIndex,
+                    onThemeChange = { index -> themeIndex = index.coerceIn(BloomThemes.indices); BloomAccent.value = BloomThemes[themeIndex]; preferences.edit().putInt("theme_index", themeIndex).apply() },
+                    compactTiles = compactTiles,
                     onCompactTilesChange = {
                         compactTiles = it
                         preferences.edit().putBoolean("compact_tiles", it).apply()
@@ -675,7 +681,9 @@ private fun SettingsScreen(
     showSystemCards: Boolean,
     onShowSystemCardsChange: (Boolean) -> Unit,
     compactTiles: Boolean,
-    onCompactTilesChange: (Boolean) -> Unit,\n    themeIndex: Int,\n    onThemeChange: (Int) -> Unit,
+    onCompactTilesChange: (Boolean) -> Unit,
+    themeIndex: Int,
+    onThemeChange: (Int) -> Unit,
     onUpdatesClick: () -> Unit,
     onProfileClick: () -> Unit,
     onSystemInfoClick: () -> Unit,
@@ -712,7 +720,9 @@ private fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
                 SettingsSwitchRow("System overview", "Show live device and profile cards on Home.", showSystemCards, onShowSystemCardsChange)
                 Spacer(Modifier.height(12.dp))
-                SettingsSwitchRow("Compact app tiles", "Fit more apps into the home carousel.", compactTiles, onCompactTilesChange)\n                Spacer(Modifier.height(12.dp))\n                ThemePickerRow(selected = themeIndex, onSelect = onThemeChange)
+                SettingsSwitchRow("Compact app tiles", "Fit more apps into the home carousel.", compactTiles, onCompactTilesChange)
+                Spacer(Modifier.height(12.dp))
+                ThemePickerRow(selected = themeIndex, onSelect = onThemeChange)
             }
         }
         Spacer(Modifier.weight(1f))
@@ -1196,7 +1206,9 @@ private fun BloomSignUpScreen(
                 Text("B L O O M   /   YOUR SPACE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(18.dp))
                 Text(
-                    if (initialName.isBlank()) "A screen that\nfeels like yours." else "Make Bloom\nyour own.",
+                    if (initialName.isBlank()) "A screen that
+feels like yours." else "Make Bloom
+your own.",
                     color = Color.White, fontSize = 43.sp, lineHeight = 49.sp, fontWeight = FontWeight.Light
                 )
                 Spacer(Modifier.height(13.dp))
