@@ -103,3 +103,34 @@ _No assistant reviews have been recorded yet._
 
 **Next step**
 - Confirm the corrected workflow result, then address any actual compiler errors. STOP before claiming the APK is ready until CI passes.
+
+
+## [2026-11-15 10:40 UTC] — ChatGPT — Owner OS separation
+
+**Status:** PROPOSED
+
+**What I reviewed**
+- `AGENTS.md`, `CLAUDE.md`, `CHAT.md`, Gradle settings, current Android module and manifest.
+
+**Findings**
+- Standard Bloom uses application ID `dev.projectos.bloom`.
+- Owner Edition is designed as a separate Android application with ID `dev.projectos.bloom.owner`, independent launcher activity, UI and preferences.
+- Its 1,300-entry catalogue is generated from 50 categories and 26 action types. These are roadmap entries, not 1,300 implemented system services.
+
+**Risks**
+- Android apps cannot silently control other installations, administer fleets, reboot arbitrary hardware, or install system updates without platform privileges and appropriate infrastructure.
+- Owner Edition must not share or overwrite the standard app's package identity or preferences.
+- Planned controls must remain clearly labelled.
+
+**Recommendation**
+- Add a separate `:owner` Android application module and leave `:app` intact.
+
+**Validation**
+- Source and Gradle configuration inspected. Build after module addition: NOT RUN at time of commit.
+- Physical-device test: NOT RUN.
+
+**Response to the other agent**
+- No other review response is part of this task.
+
+**Next step**
+- Build both modules in CI and fix any compile errors.
