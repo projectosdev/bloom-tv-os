@@ -392,6 +392,21 @@ private fun LauncherScreen() {
                     }
                     Spacer(Modifier.width(10.dp))
                     Surface(
+                        onClick = { showSignUp = true },
+                        color = Color(0x334F6A9A),
+                        shape = RoundedCornerShape(30.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                    ) {
+                        Row(Modifier.padding(horizontal = 13.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(25.dp).background(Color(0xFF879ED8), CircleShape), contentAlignment = Alignment.Center) {
+                                Text(profileName.take(1).ifBlank { "B" }.uppercase(), color = Color(0xFF11182A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(profileName.ifBlank { "Profile" }, color = Ink, fontSize = 12.sp)
+                        }
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Surface(
                         onClick = { showSettings = true },
                         color = Glass,
                         shape = RoundedCornerShape(30.dp),
@@ -404,12 +419,12 @@ private fun LauncherScreen() {
                         }
                     }
                 }
-                Spacer(Modifier.height(48.dp))
-                Text("Your screen. Reimagined.", color = Color.White, fontSize = 38.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
-                Text("A little more atmosphere. A lot more to explore.", color = Ink.copy(alpha = 0.72f), fontSize = 15.sp)
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(28.dp))
+                Text(if (profileName.isBlank()) "Your screen. Reimagined." else "Welcome back, $profileName.", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Light, letterSpacing = (-1).sp)
+                Text("A little more atmosphere. A lot more to explore.", color = Ink.copy(alpha = 0.72f), fontSize = 14.sp)
+                Spacer(Modifier.height(18.dp))
                 Surface(
-                    modifier = Modifier.fillMaxWidth().height(188.dp),
+                    modifier = Modifier.fillMaxWidth().height(158.dp),
                     color = Color(0x443D4A70),
                     shape = RoundedCornerShape(26.dp),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.13f))
@@ -444,7 +459,15 @@ private fun LauncherScreen() {
                         )
                     }
                 }
-                Spacer(Modifier.height(25.dp))
+                Spacer(Modifier.height(13.dp))
+                Text("AT A GLANCE", color = Petal, fontSize = 9.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SystemMetricCard("APP LIBRARY", installed.size.toString(), "Available on this device", Modifier.weight(1f))
+                    SystemMetricCard("BLOOM PROFILE", profileName.ifBlank { "Not set" }, "Personal space", Modifier.weight(1f))
+                    SystemMetricCard("SYSTEM", "Android ${Build.VERSION.RELEASE}", "${Build.MANUFACTURER} ${Build.MODEL}".take(34), Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(13.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("YOUR APPS", color = Petal, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(18.dp))
@@ -457,7 +480,7 @@ private fun LauncherScreen() {
                     Text("No supported streaming apps detected yet.", color = Ink, fontSize = 16.sp)
                     Text("Install apps on your device, then select Refresh apps.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
                 } else {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         items(installed) { app ->
                             AppTile(app, animationsEnabled && !reduceMotion) {
                                 runCatching { launchBloomApp(context, app) }
@@ -950,7 +973,7 @@ private fun AppTile(app: TvApp, animationsEnabled: Boolean, launch: () -> Unit) 
     )
     Surface(
         onClick = launch,
-        modifier = Modifier.width(226.dp).height(176.dp).scale(scale).onFocusChanged { focused = it.isFocused },
+        modifier = Modifier.width(210.dp).height(146.dp).scale(scale).onFocusChanged { focused = it.isFocused },
         color = tileColor,
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) Petal else Color.White.copy(alpha = 0.12f))
@@ -1069,6 +1092,24 @@ private fun BloomSignUpScreen(
                     letterSpacing = 1.4.sp
                 )
             }
+        }
+    }
+}
+
+
+@Composable
+private fun SystemMetricCard(title: String, value: String, detail: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.height(66.dp),
+        color = Color(0x241FFFFFFF),
+        shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
+    ) {
+        Column(Modifier.padding(horizontal = 13.dp, vertical = 9.dp), verticalArrangement = Arrangement.Center) {
+            Text(title, color = Petal.copy(alpha = 0.86f), fontSize = 8.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(3.dp))
+            Text(value, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(detail, color = Ink.copy(alpha = 0.48f), fontSize = 9.sp, maxLines = 1)
         }
     }
 }
