@@ -6,7 +6,7 @@ A lightweight, remote-first Android TV launcher concept with a liquid-glass-insp
 - Native Android application using Kotlin and Jetpack Compose.
 - Android TV / Google TV launcher entry points.
 - Animated welcome screen and Bloom branding.
-- Detection and launching of selected official streaming apps already installed on the device.
+- Discovery and launching of installed Android TV and standard Android launcher apps, with launch requests handled by Android.
 - Lightweight home screen designed for TV remote navigation.
 - Settings screen with software update information and motion preferences.
 - Software Update checks the official GitHub Releases feed, downloads a published APK, and hands it to Android's package installer for explicit user approval. It does not silently install updates or replace device firmware.

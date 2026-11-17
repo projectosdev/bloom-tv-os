@@ -241,21 +241,18 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
         }
     }
 
-    return discovered.values.sortedWith(
-        compareBy<TvApp> { if (it.packageName == "com.openai.chatgpt") 0 else 1 }
-            .thenBy { it.title.lowercase() }
-    )
+    return discovered.values.sortedBy { it.title.lowercase(Locale.ROOT) }
 }
 
 private fun launchBloomApp(context: android.content.Context, app: TvApp) {
-    val launchIntent = if (app.packageName == "com.openai.chatgpt") {
-        context.packageManager.getLaunchIntentForPackage("com.openai.chatgpt")
-            ?: Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com"))
-    } else {
-        Intent(Intent.ACTION_MAIN)
+    val packageManager = context.packageManager
+    // Prefer Android's TV-specific launcher route, then its standard launcher route.
+    // Keep an explicit component fallback for launchable activities exposed by OEMs.
+    val launchIntent = packageManager.getLeanbackLaunchIntentForPackage(app.packageName)
+        ?: packageManager.getLaunchIntentForPackage(app.packageName)
+        ?: Intent(Intent.ACTION_MAIN)
             .addCategory(app.launcherCategory)
             .setClassName(app.packageName, app.activityName)
-    }
 
     try {
         context.startActivity(launchIntent)
@@ -386,7 +383,7 @@ private fun LauncherScreen() {
     val motionAllowed = animationsEnabled && !reduceMotion
     val transitionDuration = if (motionAllowed) 260 else 0
 
-    BackHandler(enabled = showSettings || showAppLibrary || showStore || showSignUp || showControlCentre || showBloomSearch || showAmbient || showProfiles) {
+    BackHandler(enabled = showSettings || showUpdates || showSystemInfo || showAppLibrary || showStore || showSignUp || showControlCentre || showBloomSearch || showAmbient || showProfiles) {
         when {
             showSignUp -> showSignUp = false
             showControlCentre -> showControlCentre = false
@@ -579,7 +576,7 @@ private fun LauncherScreen() {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     TextButton(onClick = { showBloomSearch = true }) { Text("⌕  Search Bloom", color = BloomAccent.value) }
                     TextButton(onClick = { showAmbient = true }) { Text("✦  Bloom Ambient", color = BloomAccent.value) }
-                    TextButton(onClick = { runCatching { context.packageManager.getLaunchIntentForPackage("com.openai.chatgpt")?.let { context.startActivity(it) } ?: context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com"))) } }) { Text("✧  Bloom Assist", color = BloomAccent.value) }
+                    TextButton(onClick = { showControlCentre = true }) { Text("⚙  Quick settings", color = BloomAccent.value) }
                 }
                 Spacer(Modifier.height(8.dp))
                 if (installed.isEmpty()) {
