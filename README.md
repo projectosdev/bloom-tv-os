@@ -4,7 +4,7 @@ A lightweight, remote-first Android TV launcher concept with a liquid-glass-insp
 
 ## Included
 - Native Android application using Kotlin and Jetpack Compose.
-- Android TV / Google TV launcher entry points.
+- Android TV / Google TV launcher entry points with a dedicated TV banner and Bloom launcher icon.
 - Animated welcome screen and Bloom branding.
 - Discovery and launching of installed Android TV and standard Android launcher apps, with launch requests handled by Android.
 - Lightweight home screen designed for TV remote navigation.

@@ -16,11 +16,14 @@
     </queries>
     <application
         android:allowBackup="false"
+        android:icon="@drawable/bloom_icon"
+        android:banner="@drawable/bloom_tv_banner"
         android:label="Bloom TV OS Lite"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
+            android:banner="@drawable/bloom_tv_banner"
             android:exported="true"
             android:screenOrientation="landscape">
             <intent-filter>

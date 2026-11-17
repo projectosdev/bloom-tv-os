@@ -1,0 +1,46 @@
+package dev.projectos.bloom
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class TvAppCatalogTest {
+    @Test
+    fun placesTvLauncherAppsBeforeStandardAndroidApps() {
+        val apps = listOf(
+            TvApp("YouTube", "com.example.youtube", "YouTubeActivity", "android.intent.category.LAUNCHER", "Android app"),
+            TvApp("Netflix", "com.example.netflix", "NetflixActivity", TV_LAUNCHER_CATEGORY, "Android TV app")
+        )
+
+        assertEquals(
+            listOf("Netflix", "YouTube"),
+            sortTvApps(apps).map { it.title }
+        )
+    }
+
+    @Test
+    fun sortsNamesCaseInsensitivelyWithinEachLauncherGroup() {
+        val apps = listOf(
+            TvApp("zeta TV", "com.example.zeta", "ZetaActivity", TV_LAUNCHER_CATEGORY, "Android TV app"),
+            TvApp("Alpha mobile", "com.example.alpha", "AlphaActivity", "android.intent.category.LAUNCHER", "Android app"),
+            TvApp("Beta TV", "com.example.beta", "BetaActivity", TV_LAUNCHER_CATEGORY, "Android TV app")
+        )
+
+        assertEquals(
+            listOf("Beta TV", "zeta TV", "Alpha mobile"),
+            sortTvApps(apps).map { it.title }
+        )
+    }
+
+    @Test
+    fun usesPackageNameAsStableTieBreakerForMatchingTitles() {
+        val apps = listOf(
+            TvApp("Player", "com.example.z", "ZActivity", TV_LAUNCHER_CATEGORY, "Android TV app"),
+            TvApp("Player", "com.example.a", "AActivity", TV_LAUNCHER_CATEGORY, "Android TV app")
+        )
+
+        assertEquals(
+            listOf("com.example.a", "com.example.z"),
+            sortTvApps(apps).map { it.packageName }
+        )
+    }
+}

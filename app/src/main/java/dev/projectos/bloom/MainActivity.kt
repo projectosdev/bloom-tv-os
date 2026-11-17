@@ -57,6 +57,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusGroup
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -219,8 +220,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class TvApp(val title: String, val packageName: String, val activityName: String, val launcherCategory: String, val detail: String)
-
 private fun discoverTvApps(context: android.content.Context): List<TvApp> {
     val packageManager = context.packageManager
     val categories = listOf(Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER)
@@ -236,12 +235,13 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
             if (packageName == context.packageName || discovered.containsKey(packageName)) return@forEach
             val label = resolveInfo.loadLabel(packageManager)?.toString()?.trim().orEmpty()
             if (label.isNotEmpty()) {
-                discovered[packageName] = TvApp(label, packageName, activityInfo.name, category, "Installed app")
+                val detail = if (category == Intent.CATEGORY_LEANBACK_LAUNCHER) "Android TV app" else "Android app"
+                discovered[packageName] = TvApp(label, packageName, activityInfo.name, category, detail)
             }
         }
     }
 
-    return discovered.values.sortedBy { it.title.lowercase(Locale.ROOT) }
+    return sortTvApps(discovered.values)
 }
 
 private fun launchBloomApp(context: android.content.Context, app: TvApp) {
@@ -265,31 +265,72 @@ private fun launchBloomApp(context: android.content.Context, app: TvApp) {
 
 @Composable
 private fun BloomRoot() {
+    val context = LocalContext.current
+    val preferences = remember {
+        context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE)
+    }
+    var motionAllowed by remember {
+        mutableStateOf(
+            preferences.getBoolean("animations_enabled", true) &&
+                !preferences.getBoolean("reduce_motion", false)
+        )
+    }
     var booting by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) { delay(2600); booting = false }
+    LaunchedEffect(booting, motionAllowed) {
+        if (booting) {
+            delay(if (motionAllowed) 2600 else 420)
+            booting = false
+        }
+    }
+
     val atmosphere = rememberInfiniteTransition(label = "bloom-atmosphere")
-    val drift by atmosphere.animateFloat(-38f, 38f, infiniteRepeatable(tween(9000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "atmosphere-drift")
-    val glow by atmosphere.animateFloat(0.55f, 0.95f, infiniteRepeatable(tween(5200), RepeatMode.Reverse), label = "atmosphere-glow")
+    val drift = if (motionAllowed) {
+        val value by atmosphere.animateFloat(
+            -38f, 38f,
+            infiniteRepeatable(tween(9000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "atmosphere-drift"
+        )
+        value
+    } else 0f
+    val glow = if (motionAllowed) {
+        val value by atmosphere.animateFloat(
+            0.55f, 0.95f,
+            infiniteRepeatable(tween(5200), RepeatMode.Reverse),
+            label = "atmosphere-glow"
+        )
+        value
+    } else 0.72f
+
     Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF111D39), Midnight, Color(0xFF21172F))))) {
         Box(Modifier.offset(x = drift.dp, y = (-110).dp).size(520.dp).background(Brush.radialGradient(listOf(Color(0x665D78D9).copy(alpha = glow), Color.Transparent)), CircleShape))
         Box(Modifier.align(Alignment.BottomEnd).offset(x = 130.dp, y = 150.dp).size(560.dp).background(Brush.radialGradient(listOf(Color(0x554D9FAD), Color.Transparent)), CircleShape))
-        if (booting) BootScreen() else LauncherScreen()
+        if (booting) {
+            BootScreen(motionAllowed = motionAllowed)
+        } else {
+            LauncherScreen(onMotionAllowedChange = { motionAllowed = it })
+        }
     }
 }
 
 @Composable
-private fun BootScreen() {
+private fun BootScreen(motionAllowed: Boolean) {
     val motion = rememberInfiniteTransition(label = "petal-motion")
-    val scale by motion.animateFloat(
-        0.94f, 1.06f,
-        infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "bloom-scale"
-    )
-    val glow by motion.animateFloat(
-        0.35f, 0.75f,
-        infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "bloom-glow"
-    )
+    val scale = if (motionAllowed) {
+        val value by motion.animateFloat(
+            0.94f, 1.06f,
+            infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "bloom-scale"
+        )
+        value
+    } else 1f
+    val glow = if (motionAllowed) {
+        val value by motion.animateFloat(
+            0.35f, 0.75f,
+            infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "bloom-glow"
+        )
+        value
+    } else 0.55f
     Column(
         Modifier.fillMaxSize().padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -298,7 +339,7 @@ private fun BootScreen() {
         Box(Modifier.size(190.dp), contentAlignment = Alignment.Center) {
             Box(
                 Modifier.size(178.dp).scale(scale)
-                    .background(Color(0x22FFB8D2), CircleShape)
+                    .background(Color(0x22FFB8D2).copy(alpha = glow), CircleShape)
             )
             listOf(-72f, 0f, 72f, 144f, 216f).forEach { angle ->
                 Box(
@@ -323,18 +364,25 @@ private fun BootScreen() {
         Spacer(Modifier.height(14.dp))
         Text("A lighter way to watch.", color = Ink.copy(alpha = 0.76f), fontSize = 14.sp)
         Spacer(Modifier.height(34.dp))
-        LinearProgressIndicator(
-            modifier = Modifier.width(112.dp).height(3.dp),
-            color = BloomAccent.value,
-            trackColor = Color.White.copy(alpha = 0.12f)
-        )
+        if (motionAllowed) {
+            LinearProgressIndicator(
+                modifier = Modifier.width(112.dp).height(3.dp),
+                color = BloomAccent.value,
+                trackColor = Color.White.copy(alpha = 0.12f)
+            )
+        } else {
+            Box(
+                Modifier.width(112.dp).height(3.dp)
+                    .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(50))
+            )
+        }
         Spacer(Modifier.height(12.dp))
         Text("GETTING THINGS READY", color = Ink.copy(alpha = 0.42f), fontSize = 9.sp, letterSpacing = 2.sp)
     }
 }
 
 @Composable
-private fun LauncherScreen() {
+private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
     var showAppLibrary by remember { mutableStateOf(false) }
@@ -381,6 +429,7 @@ private fun LauncherScreen() {
     var showWelcomePanel by remember { mutableStateOf(preferences.getBoolean("show_welcome_panel", true)) }
     var compactTiles by remember { mutableStateOf(preferences.getBoolean("compact_tiles", false)) }
     val motionAllowed = animationsEnabled && !reduceMotion
+    LaunchedEffect(motionAllowed) { onMotionAllowedChange(motionAllowed) }
     val transitionDuration = if (motionAllowed) 260 else 0
 
     BackHandler(enabled = showSettings || showUpdates || showSystemInfo || showAppLibrary || showStore || showSignUp || showControlCentre || showBloomSearch || showAmbient || showProfiles) {
@@ -580,10 +629,14 @@ private fun LauncherScreen() {
                 }
                 Spacer(Modifier.height(8.dp))
                 if (installed.isEmpty()) {
-                    Text("No supported streaming apps detected yet.", color = Ink, fontSize = 16.sp)
+                    Text("No launchable apps found yet.", color = Ink, fontSize = 16.sp)
                     Text("Install apps on your device, then select Refresh apps.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
                 } else {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    LazyRow(
+                        modifier = Modifier.focusGroup(),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
                         items(installed, key = { it.packageName }) { app ->
                             AppTile(
                                 app,
@@ -1258,7 +1311,7 @@ private fun AppLibraryScreen(
             Spacer(Modifier.width(18.dp))
             Column(Modifier.weight(1f)) {
                 Text("App library", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
-                Text("${apps.size} installed apps", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
+                Text("${apps.size} launchable apps", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
             }
             TextButton(onClick = onRefresh) { Text("Refresh", color = BloomAccent.value) }
         }
