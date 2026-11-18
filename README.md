@@ -9,6 +9,7 @@ A lightweight, remote-first Android TV launcher concept with a liquid-glass-insp
 - Discovery and launching of installed Android TV and standard Android launcher apps, with launch requests handled by Android.
 - Lightweight home screen designed for TV remote navigation.
 - Settings screen with software update information and motion preferences.
+- Store entry point for the official F-Droid Android app repository. Bloom opens the installed F-Droid client, or directs users to F-Droid's official site to install it. F-Droid handles repository verification, app downloads, installation and updates.
 - Software Update checks the official GitHub Releases feed, downloads a published APK, and hands it to Android's package installer for explicit user approval. It does not silently install updates or replace device firmware.
 
 ## Get a test APK
@@ -31,6 +32,11 @@ gradle --no-daemon :app:assembleDebug
 ```
 
 The APK is written to `app/build/outputs/apk/debug/`.
+
+## App store
+Bloom does not invent app listings or route users to Google Play on devices that do not have it. The Store opens the official F-Droid client (`org.fdroid.fdroid`) when installed; otherwise it opens [F-Droid's official website](https://f-droid.org/) so the user can install the client. F-Droid is responsible for signed repository metadata, app downloads, installation prompts and app updates. App availability depends on Android version, CPU architecture and device compatibility.
+
+This integration is for Android-based Raspberry Pi images. It does not make this Android launcher run on Raspberry Pi OS/Linux; that would require a separate Linux application and packaging approach.
 
 ## Platform reality
 This repository is a launcher foundation, not replacement firmware or a complete operating system image. A true standalone TV OS requires a supported platform such as AOSP or Linux, device-specific drivers, boot integration and hardware testing.
