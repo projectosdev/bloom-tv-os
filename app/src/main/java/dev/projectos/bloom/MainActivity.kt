@@ -721,7 +721,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
         }
 
         AnimatedVisibility(visible = showAmbient, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(350)), exit = fadeOut(tween(220))) {
-            BloomAmbientScreen(onExit = { showAmbient = false })
+            BloomAmbientScreen(motionAllowed = motionAllowed, onExit = { showAmbient = false })
         }
 
         AnimatedVisibility(
@@ -990,11 +990,15 @@ private fun SettingsSwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    var focused by remember { mutableStateOf(false) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Glass,
+        color = if (focused) Color(0xFF29364F) else Glass,
         shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+        border = BorderStroke(
+            if (focused) 2.dp else 1.dp,
+            if (focused) BloomAccent.value else Color.White.copy(alpha = 0.12f)
+        )
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
@@ -1005,7 +1009,11 @@ private fun SettingsSwitchRow(
                 Spacer(Modifier.height(4.dp))
                 Text(subtitle, color = Ink.copy(alpha = 0.62f), fontSize = 12.sp)
             }
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                modifier = Modifier.onFocusChanged { focused = it.isFocused }
+            )
         }
     }
 }
@@ -1050,13 +1058,19 @@ private fun UpdateScreen(
                 Spacer(Modifier.height(12.dp))
                 Text("Bloom ${update?.versionName ?: installedVersion}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Light)
                 Spacer(Modifier.height(6.dp))
+                val status = resolveBloomUpdateStatus(
+                    hasAvailableUpdate = update != null,
+                    checking = checking,
+                    checkFailed = message.startsWith("Couldn't check"),
+                    hasChecked = hasChecked
+                )
                 Text(
-                    when {
-                        update != null -> "A new version is available."
-                        checking -> "Checking for updates…"
-                        message.startsWith("Couldn't check") -> "Update status couldn't be verified."
-                        hasChecked -> "You're up to date."
-                        else -> "Checking for updates…"
+                    when (status) {
+                        BloomUpdateStatus.AVAILABLE -> "A new version is available."
+                        BloomUpdateStatus.CHECKING -> "Checking for updates…"
+                        BloomUpdateStatus.ERROR -> "Update status couldn't be verified."
+                        BloomUpdateStatus.CURRENT -> "You're up to date."
+                        BloomUpdateStatus.NOT_CHECKED -> "Update status has not been checked yet."
                     },
                     color = Ink.copy(alpha = 0.68f),
                     fontSize = 13.sp
@@ -1087,11 +1101,21 @@ private fun UpdateScreen(
                         Text(update.notes.take(1000), color = Ink.copy(alpha = 0.76f), fontSize = 13.sp)
                     }
                 } else {
-                    Text("You're running the latest version currently known to Bloom.", color = Ink.copy(alpha = 0.76f), fontSize = 14.sp)
+                    Text(
+                        when (status) {
+                            BloomUpdateStatus.CHECKING -> "Bloom is checking the official release feed. This can take a few seconds."
+                            BloomUpdateStatus.ERROR -> "Bloom couldn't confirm whether an update is available. Check your connection and try again."
+                            BloomUpdateStatus.CURRENT -> "You're running the latest version currently known to Bloom."
+                            BloomUpdateStatus.NOT_CHECKED -> "Check for updates to see whether a newer version is available."
+                            BloomUpdateStatus.AVAILABLE -> "A new version is ready to download."
+                        },
+                        color = Ink.copy(alpha = 0.76f),
+                        fontSize = 14.sp
+                    )
                     Spacer(Modifier.height(18.dp))
                     Button(onClick = onCheck, enabled = !busy,
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF111522))) {
-                        Text(if (busy) "Checking…" else "Check for updates")
+                        Text(if (checking) "Checking…" else "Check for updates")
                     }
                 }
                 if (message.isNotBlank()) {
@@ -1664,11 +1688,11 @@ private fun BloomControlCentre(
                 Text("DEVICE SETTINGS", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(9.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SystemSettingButton("Wi-Fi", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                    SystemSettingButton("Bluetooth", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                    SystemSettingButton("Display", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                    SystemSettingButton("Sound", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_SOUND_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                    SystemSettingButton("Accessibility", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    SystemSettingButton("Wi-Fi", Modifier.weight(1f)) { openBloomDeviceSettings(context, android.provider.Settings.ACTION_WIFI_SETTINGS, "Wi-Fi") }
+                    SystemSettingButton("Bluetooth", Modifier.weight(1f)) { openBloomDeviceSettings(context, android.provider.Settings.ACTION_BLUETOOTH_SETTINGS, "Bluetooth") }
+                    SystemSettingButton("Display", Modifier.weight(1f)) { openBloomDeviceSettings(context, android.provider.Settings.ACTION_DISPLAY_SETTINGS, "Display") }
+                    SystemSettingButton("Sound", Modifier.weight(1f)) { openBloomDeviceSettings(context, android.provider.Settings.ACTION_SOUND_SETTINGS, "Sound") }
+                    SystemSettingButton("Accessibility", Modifier.weight(1f)) { openBloomDeviceSettings(context, android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS, "Accessibility") }
                 }
                 Spacer(Modifier.height(8.dp))
                 Text("These open Android's own settings pages. Android keeps control of protected device features.", color = Ink.copy(alpha = 0.5f), fontSize = 10.sp, lineHeight = 14.sp)
@@ -1681,13 +1705,26 @@ private fun BloomControlCentre(
 
 @Composable
 private fun QuickToggleCard(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier, color = Glass, shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))) {
+    var focused by remember { mutableStateOf(false) }
+    Surface(
+        modifier = modifier,
+        color = if (focused) Color(0xFF29364F) else Glass,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(
+            if (focused) 2.dp else 1.dp,
+            if (focused) BloomAccent.value else Color.White.copy(alpha = 0.12f)
+        )
+    ) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, color = Ink.copy(alpha = 0.52f), fontSize = 10.sp)
             }
-            Switch(checked = checked, onCheckedChange = onChange)
+            Switch(
+                checked = checked,
+                onCheckedChange = onChange,
+                modifier = Modifier.onFocusChanged { focused = it.isFocused }
+            )
         }
     }
 }
@@ -1739,10 +1776,10 @@ private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (
                 Spacer(Modifier.height(8.dp))
                 Text("DEVICE SETTINGS", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    SystemSettingButton("Wi-Fi", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                    SystemSettingButton("Bluetooth", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                    SystemSettingButton("Display", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                    SystemSettingButton("Sound", Modifier.weight(1f)) { context.startActivity(Intent(android.provider.Settings.ACTION_SOUND_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    SystemSettingButton("Wi-Fi", Modifier.weight(1f)) { openBloomDeviceSettings(context, android.provider.Settings.ACTION_WIFI_SETTINGS, "Wi-Fi") }
+                    SystemSettingButton("Bluetooth", Modifier.weight(1f)) { openBloomDeviceSettings(context, android.provider.Settings.ACTION_BLUETOOTH_SETTINGS, "Bluetooth") }
+                    SystemSettingButton("Display", Modifier.weight(1f)) { openBloomDeviceSettings(context, android.provider.Settings.ACTION_DISPLAY_SETTINGS, "Display") }
+                    SystemSettingButton("Sound", Modifier.weight(1f)) { openBloomDeviceSettings(context, android.provider.Settings.ACTION_SOUND_SETTINGS, "Sound") }
                 }
             }
         }
@@ -1751,10 +1788,24 @@ private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (
 }
 
 @Composable
-private fun BloomAmbientScreen(onExit: () -> Unit) {
+private fun BloomAmbientScreen(motionAllowed: Boolean, onExit: () -> Unit) {
     val motion = rememberInfiniteTransition(label = "ambient")
-    val drift by motion.animateFloat(-55f, 55f, infiniteRepeatable(tween(11000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "ambient-drift")
-    val pulse by motion.animateFloat(0.5f, 0.95f, infiniteRepeatable(tween(5000), RepeatMode.Reverse), label = "ambient-pulse")
+    val drift = if (motionAllowed) {
+        val value by motion.animateFloat(
+            -55f, 55f,
+            infiniteRepeatable(tween(11000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "ambient-drift"
+        )
+        value
+    } else 0f
+    val pulse = if (motionAllowed) {
+        val value by motion.animateFloat(
+            0.5f, 0.95f,
+            infiniteRepeatable(tween(5000), RepeatMode.Reverse),
+            label = "ambient-pulse"
+        )
+        value
+    } else 0.72f
     var clock by remember { mutableStateOf(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())) }
     LaunchedEffect(Unit) { while (true) { clock = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()); delay(15000) } }
     Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF101B36), Midnight, Color(0xFF30213C))))) {
@@ -1840,6 +1891,20 @@ private fun BloomProfilesScreen(currentName: String, onSelect: (String) -> Unit,
     }
 }
 
+
+private fun openBloomDeviceSettings(
+    context: android.content.Context,
+    action: String,
+    label: String
+) {
+    try {
+        context.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "$label settings aren't available on this device.", Toast.LENGTH_SHORT).show()
+    } catch (_: SecurityException) {
+        Toast.makeText(context, "Android blocked access to $label settings.", Toast.LENGTH_SHORT).show()
+    }
+}
 
 @Composable
 private fun SystemSettingButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
