@@ -958,7 +958,7 @@ private fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
                 SettingsSwitchRow("Compact app tiles", "Fit more apps into the home carousel.", compactTiles, onCompactTilesChange)
                 Spacer(Modifier.height(12.dp))
-                ThemePickerRow(selected = themeIndex, onSelect = onThemeChange)
+                ThemePickerRow(selectedIndex = themeIndex, onSelect = onThemeChange)
             }
         }
         Spacer(Modifier.weight(1f))
