@@ -1,11 +1,14 @@
 # Bloom TV OS Lite build status
 
-Last verified: 2026-11-15
+Last verified: 2026-11-19
 
-- GitHub Actions run #77 successfully executed `:app:assembleDebug` for pull request #1 head `0c0d1dc39486da6be84dbd03f65ff05c362250c8`.
-- The workflow uploaded the `bloom-tv-os-debug` APK artifact.
-- The earlier Kotlin compilation error in the profile screen was fixed and the subsequent CI build passed.
-- A local build was not run because this environment has no Gradle installation or Android SDK.
+- GitHub Actions run #92 succeeded on commit `07ac9ff6a11062518c1beb2fc542a03af4e17a95`: `:app:testDebugUnitTest`, `:app:assembleDebug`, and APK artifact upload all passed.
+- The `bloom-tv-os-debug` artifact was uploaded (16.1 MB) and expires 2026-11-26.
+- The feature-branch workflow also published a preview debug APK release. This is not an OTA or firmware update.
+- Local pure-Kotlin checks passed 17 assertions covering version comparison, trusted release URLs, app sorting, and update-state resolution.
+- A local Android build was **NOT RUN**: this environment has no Gradle installation or Android SDK.
 - No Android TV / Google TV emulator or physical-device test has been recorded.
 
-This is a native Android launcher foundation, not replacement firmware. Official streaming apps must be installed and supported by the target device. Preview APKs are debug-signed and are not production releases.
+The updater is an APK-download and Android package-installer hand-off in code. Its installation flow has not been verified on hardware. Bloom remains a launcher app, not replacement firmware.
+
+PR #1 remains open. Its branch is 23 commits behind current `main` and GitHub reports merge conflicts; no merge/rebase was performed during this work.

@@ -4,10 +4,22 @@ on:
   push:
     branches:
       - feature/settings-updates-animations
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/android-debug.yml'
   pull_request:
     branches:
       - main
       - master
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/android-debug.yml'
   workflow_dispatch:
 
 permissions:
@@ -48,7 +60,7 @@ jobs:
 
   publish-release:
     name: Publish Bloom debug release
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/settings-updates-animations'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/settings-updates-animations' && (contains(join(github.event.head_commit.modified, ','), 'app/') || contains(join(github.event.head_commit.added, ','), 'app/') || contains(join(github.event.head_commit.removed, ','), 'app/'))
     needs: build-debug
     runs-on: ubuntu-latest
     permissions:
