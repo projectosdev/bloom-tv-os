@@ -17,6 +17,7 @@ import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -229,15 +230,19 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
     val categories = listOf(Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER)
     val discovered = linkedMapOf<String, TvApp>()
 
-    categories.forEach { category ->
+    for (category in categories) {
         val query = Intent(Intent.ACTION_MAIN).addCategory(category)
         @Suppress("DEPRECATION")
         val activities = packageManager.queryIntentActivities(query, PackageManager.MATCH_DEFAULT_ONLY)
-        activities.forEach { resolveInfo ->
-            val activityInfo = resolveInfo.activityInfo ?: return@forEach
+        for (resolveInfo in activities) {
+            val activityInfo = resolveInfo.activityInfo ?: continue
+            val applicationInfo = activityInfo.applicationInfo
+            if (!activityInfo.enabled || !activityInfo.exported || !applicationInfo.enabled) continue
+
             val packageName = activityInfo.packageName
-            if (packageName == context.packageName || discovered.containsKey(packageName)) return@forEach
-            val label = resolveInfo.loadLabel(packageManager)?.toString()?.trim().orEmpty()
+            if (packageName == context.packageName || discovered.containsKey(packageName)) continue
+            val label = runCatching { resolveInfo.loadLabel(packageManager).toString().trim() }
+                .getOrDefault("")
             if (label.isNotEmpty()) {
                 val detail = if (category == Intent.CATEGORY_LEANBACK_LAUNCHER) "Android TV app" else "Android app"
                 discovered[packageName] = TvApp(label, packageName, activityInfo.name, category, detail)
@@ -451,12 +456,30 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
         }
     }
 
-    var installed by remember { mutableStateOf(discoverTvApps(context)) }
+    var installed by remember { mutableStateOf(emptyList<TvApp>()) }
+    var appDiscoveryLoading by remember { mutableStateOf(true) }
+    var appDiscoveryError by remember { mutableStateOf(false) }
+    var appRefreshToken by remember { mutableIntStateOf(0) }
+    LaunchedEffect(appRefreshToken) {
+        appDiscoveryLoading = true
+        appDiscoveryError = false
+        try {
+            installed = withContext(Dispatchers.IO) { discoverTvApps(context) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            installed = emptyList()
+            appDiscoveryError = true
+        } finally {
+            appDiscoveryLoading = false
+        }
+    }
+
     val activity = context as? ComponentActivity
     DisposableEffect(activity) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                installed = discoverTvApps(context)
+                appRefreshToken += 1
             }
         }
         activity?.lifecycle?.addObserver(observer)
@@ -622,8 +645,8 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("YOUR APPS", color = BloomAccent.value, fontSize = 11.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(18.dp))
-                    TextButton(onClick = { installed = discoverTvApps(context) }) {
-                        Text("Refresh apps", color = Ink.copy(alpha = 0.75f), fontSize = 12.sp)
+                    TextButton(onClick = { appRefreshToken += 1 }, enabled = !appDiscoveryLoading) {
+                        Text(if (appDiscoveryLoading) "Finding apps…" else "Refresh apps", color = Ink.copy(alpha = 0.75f), fontSize = 12.sp)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -633,8 +656,18 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 if (installed.isEmpty()) {
-                    Text("No launchable apps found yet.", color = Ink, fontSize = 16.sp)
-                    Text("Install apps on your device, then select Refresh apps.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
+                    Text(
+                        when {
+                            appDiscoveryLoading -> "Finding installed apps…"
+                            appDiscoveryError -> "Bloom couldn't read installed apps. Try Refresh apps."
+                            else -> "No launchable apps found yet."
+                        },
+                        color = Ink,
+                        fontSize = 16.sp
+                    )
+                    if (!appDiscoveryLoading && !appDiscoveryError) {
+                        Text("Install apps on your device, then select Refresh apps.", color = Ink.copy(alpha = 0.6f), fontSize = 12.sp)
+                    }
                 } else {
                     LazyRow(
                         modifier = Modifier.focusGroup(),
@@ -699,7 +732,9 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
             AppLibraryScreen(
                 apps = installed,
                 motionAllowed = motionAllowed,
-                onRefresh = { installed = discoverTvApps(context) },
+                loading = appDiscoveryLoading,
+                discoveryError = appDiscoveryError,
+                onRefresh = { appRefreshToken += 1 },
                 onLaunch = { app ->
                     runCatching { launchBloomApp(context, app) }
                 },
@@ -718,7 +753,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
         }
 
         AnimatedVisibility(visible = showBloomSearch, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(if (motionAllowed) 180 else 0)), exit = fadeOut(tween(if (motionAllowed) 140 else 0))) {
-            BloomSearchScreen(apps = installed, motionAllowed = motionAllowed, onBack = { showBloomSearch = false }, onLaunch = { app -> showBloomSearch = false; runCatching { launchBloomApp(context, app) } }, onSettings = { showBloomSearch = false; showSettings = true })
+            BloomSearchScreen(apps = installed, motionAllowed = motionAllowed, loading = appDiscoveryLoading, discoveryError = appDiscoveryError, onBack = { showBloomSearch = false }, onLaunch = { app -> showBloomSearch = false; runCatching { launchBloomApp(context, app) } }, onSettings = { showBloomSearch = false; showSettings = true })
         }
 
         AnimatedVisibility(visible = showProfiles, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(if (motionAllowed) 180 else 0)), exit = fadeOut(tween(if (motionAllowed) 140 else 0))) {
@@ -1145,6 +1180,8 @@ private fun UpdateScreen(
 private fun AppLibraryScreen(
     apps: List<TvApp>,
     motionAllowed: Boolean,
+    loading: Boolean,
+    discoveryError: Boolean,
     onRefresh: () -> Unit,
     onLaunch: (TvApp) -> Unit,
     onBack: () -> Unit
@@ -1187,7 +1224,12 @@ private fun AppLibraryScreen(
         Spacer(Modifier.height(16.dp))
         if (filteredApps.isEmpty()) {
             Text(
-                if (apps.isEmpty()) "No compatible apps were found. Install an app and refresh." else "No apps match that search.",
+                when {
+                    loading -> "Finding installed apps…"
+                    discoveryError -> "Bloom couldn't read installed apps. Try Refresh."
+                    apps.isEmpty() -> "No compatible apps were found. Install an app and refresh."
+                    else -> "No apps match that search."
+                },
                 color = Ink.copy(alpha = 0.7f),
                 fontSize = 14.sp
             )
@@ -1561,7 +1603,7 @@ private fun QuickToggleCard(title: String, subtitle: String, checked: Boolean, o
 }
 
 @Composable
-private fun BloomSearchScreen(apps: List<TvApp>, motionAllowed: Boolean, onBack: () -> Unit, onLaunch: (TvApp) -> Unit, onSettings: () -> Unit) {
+private fun BloomSearchScreen(apps: List<TvApp>, motionAllowed: Boolean, loading: Boolean, discoveryError: Boolean, onBack: () -> Unit, onLaunch: (TvApp) -> Unit, onSettings: () -> Unit) {
     val context = LocalContext.current
     val initialFocusRequester = remember { FocusRequester() }
     RequestFocusOnEntry(initialFocusRequester)
@@ -1578,7 +1620,17 @@ private fun BloomSearchScreen(apps: List<TvApp>, motionAllowed: Boolean, onBack:
         Spacer(Modifier.height(10.dp))
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             item { Text("INSTALLED APPS  •  ${matches.size}", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp) }
-            if (matches.isEmpty()) item { Text("No installed apps match.", color = Ink.copy(alpha = 0.58f), fontSize = 11.sp) }
+            if (matches.isEmpty()) item {
+                Text(
+                    when {
+                        loading -> "Finding installed apps…"
+                        discoveryError -> "Bloom couldn't read installed apps."
+                        else -> "No installed apps match."
+                    },
+                    color = Ink.copy(alpha = 0.58f),
+                    fontSize = 11.sp
+                )
+            }
             items(matches, key = { it.packageName }) { app ->
                 BloomActionSurface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth(), motionAllowed = motionAllowed) {
                     Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
