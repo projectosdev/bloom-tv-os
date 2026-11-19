@@ -65,6 +65,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -694,6 +698,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
         ) {
             AppLibraryScreen(
                 apps = installed,
+                motionAllowed = motionAllowed,
                 onRefresh = { installed = discoverTvApps(context) },
                 onLaunch = { app ->
                     runCatching { launchBloomApp(context, app) }
@@ -702,7 +707,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
             )
         }
 
-        AnimatedVisibility(visible = showControlCentre, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+        AnimatedVisibility(visible = showControlCentre, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(if (motionAllowed) 180 else 0)), exit = fadeOut(tween(if (motionAllowed) 140 else 0))) {
             BloomControlCentre(
                 animationsEnabled = animationsEnabled, onAnimations = { animationsEnabled = it; preferences.edit().putBoolean("animations_enabled", it).apply() },
                 reduceMotion = reduceMotion, onReduceMotion = { reduceMotion = it; preferences.edit().putBoolean("reduce_motion", it).apply() },
@@ -712,15 +717,15 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
             )
         }
 
-        AnimatedVisibility(visible = showBloomSearch, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
-            BloomSearchScreen(apps = installed, onBack = { showBloomSearch = false }, onLaunch = { app -> showBloomSearch = false; runCatching { launchBloomApp(context, app) } }, onSettings = { showBloomSearch = false; showSettings = true })
+        AnimatedVisibility(visible = showBloomSearch, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(if (motionAllowed) 180 else 0)), exit = fadeOut(tween(if (motionAllowed) 140 else 0))) {
+            BloomSearchScreen(apps = installed, motionAllowed = motionAllowed, onBack = { showBloomSearch = false }, onLaunch = { app -> showBloomSearch = false; runCatching { launchBloomApp(context, app) } }, onSettings = { showBloomSearch = false; showSettings = true })
         }
 
-        AnimatedVisibility(visible = showProfiles, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
-            BloomProfilesScreen(currentName = profileName, onSelect = { name -> profileName = name; preferences.edit().putString("profile_name", name).putBoolean("profile_setup_complete", true).apply(); showProfiles = false }, onBack = { showProfiles = false })
+        AnimatedVisibility(visible = showProfiles, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(if (motionAllowed) 180 else 0)), exit = fadeOut(tween(if (motionAllowed) 140 else 0))) {
+            BloomProfilesScreen(currentName = profileName, motionAllowed = motionAllowed, onSelect = { name -> profileName = name; preferences.edit().putString("profile_name", name).putBoolean("profile_setup_complete", true).apply(); showProfiles = false }, onBack = { showProfiles = false })
         }
 
-        AnimatedVisibility(visible = showAmbient, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(350)), exit = fadeOut(tween(220))) {
+        AnimatedVisibility(visible = showAmbient, modifier = Modifier.fillMaxSize(), enter = fadeIn(tween(if (motionAllowed) 350 else 0)), exit = fadeOut(tween(if (motionAllowed) 220 else 0))) {
             BloomAmbientScreen(motionAllowed = motionAllowed, onExit = { showAmbient = false })
         }
 
@@ -773,6 +778,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
                 showSystemInfo -> SystemInfoScreen(onBack = { showSystemInfo = false })
                 else -> {
                 SettingsScreen(
+                    motionAllowed = motionAllowed,
                     animationsEnabled = animationsEnabled,
                     onAnimationsChange = {
                         animationsEnabled = it
@@ -846,6 +852,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
 
 @Composable
 private fun SettingsScreen(
+    motionAllowed: Boolean,
     animationsEnabled: Boolean,
     onAnimationsChange: (Boolean) -> Unit,
     reduceMotion: Boolean,
@@ -879,11 +886,11 @@ private fun SettingsScreen(
             Column(Modifier.weight(1.15f)) {
                 Text("SYSTEM", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
-                SettingsRow("Your Profile", "Personalise your Bloom experience", "↗", onProfileClick)
+                SettingsRow("Your Profile", "Personalise your Bloom experience", "↗", motionAllowed, onProfileClick)
                 Spacer(Modifier.height(12.dp))
-                SettingsRow("Software Update", "New features and Bloom releases", "↗", onUpdatesClick)
+                SettingsRow("Software Update", "New features and Bloom releases", "↗", motionAllowed, onUpdatesClick)
                 Spacer(Modifier.height(12.dp))
-                SettingsRow("About Bloom", "Version, device and system information", "↗", onSystemInfoClick)
+                SettingsRow("About Bloom", "Version, device and system information", "↗", motionAllowed, onSystemInfoClick)
             }
             Column(Modifier.weight(1f)) {
                 Text("EXPERIENCE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
@@ -907,11 +914,11 @@ private fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsRow(title: String, subtitle: String, trailing: String, onClick: () -> Unit) {
+private fun SettingsRow(title: String, subtitle: String, trailing: String, motionAllowed: Boolean, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val background by animateColorAsState(
         if (focused) Color(0xFF3A3045) else Glass,
-        animationSpec = tween(180),
+        animationSpec = tween(if (motionAllowed) 180 else 0),
         label = "settings-row-background"
     )
     Surface(
@@ -936,13 +943,14 @@ private fun SettingsRow(title: String, subtitle: String, trailing: String, onCli
 private fun BloomActionSurface(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    motionAllowed: Boolean,
     color: Color = Glass,
     content: @Composable () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
     val background by animateColorAsState(
         targetValue = if (focused) Color(0xFF3A4A6D) else color,
-        animationSpec = tween(140),
+        animationSpec = tween(if (motionAllowed) 140 else 0),
         label = "bloom-action-focus"
     )
 
@@ -1012,7 +1020,9 @@ private fun SettingsSwitchRow(
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                modifier = Modifier.onFocusChanged { focused = it.isFocused }
+                modifier = Modifier.onFocusChanged { focused = it.isFocused }.semantics {
+                    contentDescription = title
+                }
             )
         }
     }
@@ -1134,6 +1144,7 @@ private fun UpdateScreen(
 @Composable
 private fun AppLibraryScreen(
     apps: List<TvApp>,
+    motionAllowed: Boolean,
     onRefresh: () -> Unit,
     onLaunch: (TvApp) -> Unit,
     onBack: () -> Unit
@@ -1185,7 +1196,8 @@ private fun AppLibraryScreen(
                 items(filteredApps, key = { it.packageName }) { app ->
                     BloomActionSurface(
                         onClick = { onLaunch(app) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        motionAllowed = motionAllowed
                     ) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp),
@@ -1475,6 +1487,8 @@ private fun BloomControlCentre(
     onClose: () -> Unit, onSettings: () -> Unit
 ) {
     val context = LocalContext.current
+    val doneFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(doneFocusRequester)
     Box(Modifier.fillMaxSize().background(Color(0xCC030611)).padding(30.dp), contentAlignment = Alignment.Center) {
         Surface(
             modifier = Modifier.fillMaxWidth().widthIn(max = 900.dp),
@@ -1487,7 +1501,7 @@ private fun BloomControlCentre(
                         Text("BLOOM CONTROL CENTRE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 2.5.sp, fontWeight = FontWeight.Bold)
                         Text("Your quick settings", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
                     }
-                    TextButton(onClick = onClose) { Text("Done  ✕", color = BloomAccent.value) }
+                    TextButton(onClick = onClose, modifier = Modifier.focusRequester(doneFocusRequester)) { Text("Done  ✕", color = BloomAccent.value) }
                 }
                 Spacer(Modifier.height(20.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1538,14 +1552,16 @@ private fun QuickToggleCard(title: String, subtitle: String, checked: Boolean, o
             Switch(
                 checked = checked,
                 onCheckedChange = onChange,
-                modifier = Modifier.onFocusChanged { focused = it.isFocused }
+                modifier = Modifier.onFocusChanged { focused = it.isFocused }.semantics {
+                    contentDescription = title
+                }
             )
         }
     }
 }
 
 @Composable
-private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (TvApp) -> Unit, onSettings: () -> Unit) {
+private fun BloomSearchScreen(apps: List<TvApp>, motionAllowed: Boolean, onBack: () -> Unit, onLaunch: (TvApp) -> Unit, onSettings: () -> Unit) {
     val context = LocalContext.current
     val initialFocusRequester = remember { FocusRequester() }
     RequestFocusOnEntry(initialFocusRequester)
@@ -1564,7 +1580,7 @@ private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (
             item { Text("INSTALLED APPS  •  ${matches.size}", color = BloomAccent.value, fontSize = 9.sp, letterSpacing = 2.sp) }
             if (matches.isEmpty()) item { Text("No installed apps match.", color = Ink.copy(alpha = 0.58f), fontSize = 11.sp) }
             items(matches, key = { it.packageName }) { app ->
-                BloomActionSurface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth()) {
+                BloomActionSurface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth(), motionAllowed = motionAllowed) {
                     Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 21.sp, modifier = Modifier.width(38.dp))
                         Column(Modifier.weight(1f)) { Text(app.title, color = Color.White, fontWeight = FontWeight.SemiBold); Text(app.packageName, color = Ink.copy(alpha = 0.45f), fontSize = 9.sp) }
@@ -1573,7 +1589,7 @@ private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (
                 }
             }
             item {
-                BloomActionSurface(onClick = { openBloomAppStore(context) }, modifier = Modifier.fillMaxWidth()) {
+                BloomActionSurface(onClick = { openBloomAppStore(context) }, modifier = Modifier.fillMaxWidth(), motionAllowed = motionAllowed) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("F-Droid app store", color = Color.White, fontWeight = FontWeight.SemiBold)
@@ -1600,6 +1616,8 @@ private fun BloomSearchScreen(apps: List<TvApp>, onBack: () -> Unit, onLaunch: (
 
 @Composable
 private fun BloomAmbientScreen(motionAllowed: Boolean, onExit: () -> Unit) {
+    val exitFocusRequester = remember { FocusRequester() }
+    RequestFocusOnEntry(exitFocusRequester)
     val motion = rememberInfiniteTransition(label = "ambient")
     val drift = if (motionAllowed) {
         val value by motion.animateFloat(
@@ -1628,7 +1646,7 @@ private fun BloomAmbientScreen(motionAllowed: Boolean, onExit: () -> Unit) {
             Text(clock, color = Color.White, fontSize = 104.sp, fontWeight = FontWeight.ExtraLight, letterSpacing = (-4).sp)
             Text(SimpleDateFormat("EEEE  •  d MMMM", Locale.getDefault()).format(Date()).uppercase(), color = BloomAccent.value.copy(alpha = 0.78f), fontSize = 11.sp, letterSpacing = 3.sp)
         }
-        TextButton(onClick = onExit, modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp)) { Text("Exit ambient  ✕", color = Ink.copy(alpha = 0.75f)) }
+        TextButton(onClick = onExit, modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp).focusRequester(exitFocusRequester)) { Text("Exit ambient  ✕", color = Ink.copy(alpha = 0.75f)) }
     }
 }
 
@@ -1642,8 +1660,22 @@ private fun ThemePickerRow(selected: Int, onSelect: (Int) -> Unit) {
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 BloomThemes.forEachIndexed { index, color ->
+                    var focused by remember { mutableStateOf(false) }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Surface(onClick = { onSelect(index) }, modifier = Modifier.size(30.dp), shape = CircleShape, color = color, border = BorderStroke(if (selected == index) 3.dp else 1.dp, if (selected == index) Color.White else Color.White.copy(alpha = 0.3f))) {}
+                        Surface(
+                            onClick = { onSelect(index) },
+                            modifier = Modifier.size(30.dp).onFocusChanged { focused = it.isFocused }.semantics {
+                                contentDescription = "${BloomThemeNames[index]} theme"
+                                selected = index == selected
+                                role = Role.RadioButton
+                            },
+                            shape = CircleShape,
+                            color = color,
+                            border = BorderStroke(
+                                if (focused) 3.dp else if (index == selected) 2.dp else 1.dp,
+                                if (focused || index == selected) Color.White else Color.White.copy(alpha = 0.3f)
+                            )
+                        ) {}
                         Text(BloomThemeNames[index], color = Ink.copy(alpha = 0.55f), fontSize = 8.sp)
                     }
                 }
@@ -1653,7 +1685,7 @@ private fun ThemePickerRow(selected: Int, onSelect: (Int) -> Unit) {
 }
 
 @Composable
-private fun BloomProfilesScreen(currentName: String, onSelect: (String) -> Unit, onBack: () -> Unit) {
+private fun BloomProfilesScreen(currentName: String, motionAllowed: Boolean, onSelect: (String) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("bloom_settings", android.content.Context.MODE_PRIVATE) }
     val initialFocusRequester = remember { FocusRequester() }
@@ -1678,6 +1710,7 @@ private fun BloomProfilesScreen(currentName: String, onSelect: (String) -> Unit,
                 BloomActionSurface(
                     onClick = { onSelect(profile) },
                     modifier = Modifier.fillMaxWidth(),
+                    motionAllowed = motionAllowed,
                     color = if (profile == currentName) Color(0x443E5278) else Glass
                 ) {
                     Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
