@@ -132,7 +132,7 @@ private suspend fun checkForBloomUpdate(context: android.content.Context): Bloom
             var apkUrl: String? = null
             for (index in 0 until assets.length()) {
                 val asset = assets.optJSONObject(index) ?: continue
-                if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
+                if (asset.optString("name").equals("app-debug.apk", ignoreCase = true)) {
                     val candidate = asset.optString("browser_download_url").trim()
                     if (isTrustedBloomReleaseAssetUrl(candidate)) {
                         apkUrl = candidate
@@ -218,10 +218,10 @@ private suspend fun downloadAndInstallBloomUpdate(
             throw IllegalStateException("The download is taking too long. Check your connection and try again.")
         }
     } catch (cancelled: CancellationException) {
-        manager.remove(downloadId)
+        runCatching { manager.remove(downloadId) }
         throw cancelled
     } catch (error: Exception) {
-        manager.remove(downloadId)
+        runCatching { manager.remove(downloadId) }
         throw error
     }
     withContext(Dispatchers.Main) {
