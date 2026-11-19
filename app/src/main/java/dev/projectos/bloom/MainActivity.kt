@@ -1217,7 +1217,7 @@ private fun AppLibraryScreen(
                 Text("App library", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
                 Text("${apps.size} launchable apps", color = Ink.copy(alpha = 0.62f), fontSize = 13.sp)
             }
-            TextButton(onClick = onRefresh) { Text("Refresh", color = BloomAccent.value) }
+            TextButton(onClick = onRefresh, enabled = !loading) { Text(if (loading) "Finding apps…" else "Refresh", color = BloomAccent.value) }
         }
         Spacer(Modifier.height(22.dp))
         TextField(
@@ -1721,7 +1721,7 @@ private fun BloomAmbientScreen(motionAllowed: Boolean, onExit: () -> Unit) {
 
 
 @Composable
-private fun ThemePickerRow(selected: Int, onSelect: (Int) -> Unit) {
+private fun ThemePickerRow(selectedIndex: Int, onSelect: (Int) -> Unit) {
     Surface(Modifier.fillMaxWidth(), color = Glass, shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))) {
         Column(Modifier.padding(15.dp)) {
             Text("Bloom Themes", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
@@ -1735,14 +1735,14 @@ private fun ThemePickerRow(selected: Int, onSelect: (Int) -> Unit) {
                             onClick = { onSelect(index) },
                             modifier = Modifier.size(30.dp).onFocusChanged { focused = it.isFocused }.semantics {
                                 contentDescription = "${BloomThemeNames[index]} theme"
-                                selected = index == selected
+                                selected = index == selectedIndex
                                 role = Role.RadioButton
                             },
                             shape = CircleShape,
                             color = color,
                             border = BorderStroke(
-                                if (focused) 3.dp else if (index == selected) 2.dp else 1.dp,
-                                if (focused || index == selected) Color.White else Color.White.copy(alpha = 0.3f)
+                                if (focused) 3.dp else if (index == selectedIndex) 2.dp else 1.dp,
+                                if (focused || index == selectedIndex) Color.White else Color.White.copy(alpha = 0.3f)
                             )
                         ) {}
                         Text(BloomThemeNames[index], color = Ink.copy(alpha = 0.55f), fontSize = 8.sp)
