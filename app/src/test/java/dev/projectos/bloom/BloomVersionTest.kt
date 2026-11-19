@@ -1,10 +1,36 @@
 package dev.projectos.bloom
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BloomVersionTest {
+    @Test
+    fun acceptsOnlyBloomGithubReleaseApkAssets() {
+        assertTrue(isTrustedBloomReleaseAssetUrl(
+            "https://github.com/projectosdev/bloom-tv-os/releases/download/v0.1.84/app-debug.apk"
+        ))
+        assertFalse(isTrustedBloomReleaseAssetUrl(
+            "https://github.com.evil.example/projectosdev/bloom-tv-os/releases/download/v0.1.84/app-debug.apk"
+        ))
+        assertFalse(isTrustedBloomReleaseAssetUrl(
+            "http://github.com/projectosdev/bloom-tv-os/releases/download/v0.1.84/app-debug.apk"
+        ))
+        assertFalse(isTrustedBloomReleaseAssetUrl(
+            "https://github.com/other/repo/releases/download/v0.1.84/app-debug.apk"
+        ))
+        assertFalse(isTrustedBloomReleaseAssetUrl(
+            "https://github.com/projectosdev/bloom-tv-os/releases/download/v0.1.84/notes.txt"
+        ))
+        assertFalse(isTrustedBloomReleaseAssetUrl(
+            "https://github.com/projectosdev/bloom-tv-os/releases/download/v0.1.84/app-debug.apk?download=1"
+        ))
+        assertFalse(isTrustedBloomReleaseAssetUrl(
+            "https://github.com/projectosdev/bloom-tv-os/releases/download/v0.1.84/../app-debug.apk"
+        ))
+    }
+
     @Test
     fun comparesNumericSegmentsInsteadOfLexicographicText() {
         assertTrue(compareBloomVersions("0.10.0", "0.9.12") > 0)

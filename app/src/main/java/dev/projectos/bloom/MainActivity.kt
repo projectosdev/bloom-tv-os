@@ -132,10 +132,11 @@ private suspend fun checkForBloomUpdate(context: android.content.Context): Bloom
             for (index in 0 until assets.length()) {
                 val asset = assets.optJSONObject(index) ?: continue
                 if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
-                    apkUrl = asset.optString("browser_download_url").takeIf {
-                        it.startsWith("https://github.com/projectosdev/bloom-tv-os/releases/download/")
+                    val candidate = asset.optString("browser_download_url").trim()
+                    if (isTrustedBloomReleaseAssetUrl(candidate)) {
+                        apkUrl = candidate
+                        break
                     }
-                    break
                 }
             }
             val download = apkUrl
@@ -160,6 +161,10 @@ private suspend fun downloadAndInstallBloomUpdate(
     update: BloomUpdate,
     onStatus: (String) -> Unit
 ) {
+    if (!isTrustedBloomReleaseAssetUrl(update.apkUrl)) {
+        throw IllegalArgumentException("Bloom update download URL is not a trusted release asset.")
+    }
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
         !context.packageManager.canRequestPackageInstalls()
     ) {
@@ -178,7 +183,8 @@ private suspend fun downloadAndInstallBloomUpdate(
         return
     }
 
-    val manager = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
+    val manager = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as? DownloadManager
+        ?: throw IllegalStateException("Android's download service is unavailable.")
     val filename = "bloom-update-${update.versionName.replace(Regex("[^A-Za-z0-9._-]"), "_")}.apk"
     val request = DownloadManager.Request(Uri.parse(update.apkUrl))
         .setTitle("Bloom update ${update.versionName}")
@@ -188,24 +194,35 @@ private suspend fun downloadAndInstallBloomUpdate(
         .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, filename)
     val downloadId = manager.enqueue(request)
     onStatus("Downloading Bloom ${update.versionName}…")
-    val apkUri = withContext(Dispatchers.IO) {
-        repeat(180) {
-            val cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
-            cursor.use {
-                if (it != null && it.moveToFirst()) {
-                    when (it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
-                        DownloadManager.STATUS_SUCCESSFUL -> return@withContext manager.getUriForDownloadedFile(downloadId)
-                        DownloadManager.STATUS_FAILED -> {
-                            val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
-                            throw IllegalStateException("Download failed (code $reason)")
+    val apkUri = try {
+        withContext(Dispatchers.IO) {
+            repeat(180) {
+                val cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
+                cursor.use {
+                    if (it != null && it.moveToFirst()) {
+                        when (it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+                            DownloadManager.STATUS_SUCCESSFUL -> {
+                                return@withContext manager.getUriForDownloadedFile(downloadId)
+                                    ?: throw IllegalStateException("Bloom couldn't access the downloaded update.")
+                            }
+                            DownloadManager.STATUS_FAILED -> {
+                                val reason = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                                throw IllegalStateException("Download failed (code $reason)")
+                            }
                         }
                     }
                 }
+                delay(1000)
             }
-            delay(1000)
+            throw IllegalStateException("The download is taking too long. Check your connection and try again.")
         }
-        throw IllegalStateException("The download is taking too long. Check your connection and try again.")
-    } ?: throw IllegalStateException("Bloom couldn't access the downloaded update.")
+    } catch (cancelled: CancellationException) {
+        manager.remove(downloadId)
+        throw cancelled
+    } catch (error: Exception) {
+        manager.remove(downloadId)
+        throw error
+    }
     withContext(Dispatchers.Main) {
         onStatus("Download complete. Waiting for installation approval…")
         val installIntent = Intent(Intent.ACTION_VIEW).apply {
