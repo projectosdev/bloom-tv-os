@@ -258,12 +258,13 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
             if (!activityInfo.enabled || !activityInfo.exported || !applicationInfo.enabled) continue
 
             val packageName = activityInfo.packageName
-            if (packageName == context.packageName || discovered.containsKey(packageName)) continue
+            val componentKey = launcherComponentKey(packageName, activityInfo.name)
+            if (packageName == context.packageName || discovered.containsKey(componentKey)) continue
             val label = runCatching { resolveInfo.loadLabel(packageManager).toString().trim() }
                 .getOrDefault("")
             if (label.isNotEmpty()) {
                 val detail = if (category == Intent.CATEGORY_LEANBACK_LAUNCHER) "Android TV app" else "Android app"
-                discovered[packageName] = TvApp(label, packageName, activityInfo.name, category, detail)
+                discovered[componentKey] = TvApp(label, packageName, activityInfo.name, category, detail)
             }
         }
     }
@@ -273,21 +274,37 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
 
 private fun launchBloomApp(context: android.content.Context, app: TvApp) {
     val packageManager = context.packageManager
-    // Prefer Android's TV-specific launcher route, then its standard launcher route.
-    // Keep an explicit component fallback for launchable activities exposed by OEMs.
-    val launchIntent = packageManager.getLeanbackLaunchIntentForPackage(app.packageName)
-        ?: packageManager.getLaunchIntentForPackage(app.packageName)
-        ?: Intent(Intent.ACTION_MAIN)
-            .addCategory(app.launcherCategory)
-            .setClassName(app.packageName, app.activityName)
+    // Launch the exact activity Android reported for this tile first. Package-level
+    // launch intents can select a different entry point when an app exposes several.
+    val discoveredIntent = Intent(Intent.ACTION_MAIN)
+        .addCategory(app.launcherCategory)
+        .setClassName(app.packageName, app.activityName)
+    val candidates = buildList {
+        add(discoveredIntent)
+        if (app.launcherCategory == TV_LAUNCHER_CATEGORY) {
+            add(packageManager.getLeanbackLaunchIntentForPackage(app.packageName))
+        }
+        add(packageManager.getLaunchIntentForPackage(app.packageName))
+    }.filterNotNull()
 
-    try {
-        context.startActivity(launchIntent)
-    } catch (_: ActivityNotFoundException) {
-        Toast.makeText(context, "${app.title} is no longer available on this device.", Toast.LENGTH_SHORT).show()
-    } catch (_: SecurityException) {
-        Toast.makeText(context, "Android blocked ${app.title} from opening.", Toast.LENGTH_SHORT).show()
+    var blockedByAndroid = false
+    for (intent in candidates) {
+        try {
+            context.startActivity(intent)
+            return
+        } catch (_: ActivityNotFoundException) {
+            // The activity may have been removed or disabled since discovery.
+        } catch (_: SecurityException) {
+            blockedByAndroid = true
+        }
     }
+
+    val message = if (blockedByAndroid) {
+        "Android blocked ${app.title} from opening."
+    } else {
+        "${app.title} is no longer available on this device."
+    }
+    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }
 
 @Composable
@@ -508,7 +525,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
     val storeFocusRequester = remember { FocusRequester() }
     val homeVisible = !showSettings && !showAppLibrary && !showStore && !showSignUp &&
         !showControlCentre && !showBloomSearch && !showAmbient && !showProfiles
-    LaunchedEffect(homeVisible, installed.firstOrNull()?.packageName) {
+    LaunchedEffect(homeVisible, installed.firstOrNull()?.componentKey) {
         if (homeVisible) {
             withFrameNanos { }
             runCatching {
@@ -692,12 +709,12 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
                         contentPadding = PaddingValues(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        items(installed, key = { it.packageName }) { app ->
+                        items(installed, key = { it.componentKey }) { app ->
                             AppTile(
                                 app,
                                 animationsEnabled && !reduceMotion,
                                 compactTiles,
-                                focusRequester = if (installed.firstOrNull()?.packageName == app.packageName) homeFocusRequester else null
+                                focusRequester = if (installed.firstOrNull()?.componentKey == app.componentKey) homeFocusRequester else null
                             ) {
                                 runCatching { launchBloomApp(context, app) }
                             }
@@ -1074,7 +1091,7 @@ private fun SettingsSwitchRow(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 modifier = Modifier.onFocusChanged { focused = it.isFocused }.semantics {
-                    contentDescription = title
+                    contentDescription = "$title. $subtitle"
                 }
             )
         }
@@ -1253,7 +1270,7 @@ private fun AppLibraryScreen(
             )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                items(filteredApps, key = { it.packageName }) { app ->
+                items(filteredApps, key = { it.componentKey }) { app ->
                     BloomActionSurface(
                         onClick = { onLaunch(app) },
                         modifier = Modifier.fillMaxWidth(),
@@ -1649,7 +1666,7 @@ private fun BloomSearchScreen(apps: List<TvApp>, motionAllowed: Boolean, loading
                     fontSize = 11.sp
                 )
             }
-            items(matches, key = { it.packageName }) { app ->
+            items(matches, key = { it.componentKey }) { app ->
                 BloomActionSurface(onClick = { onLaunch(app) }, modifier = Modifier.fillMaxWidth(), motionAllowed = motionAllowed) {
                     Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 21.sp, modifier = Modifier.width(38.dp))

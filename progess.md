@@ -1,6 +1,6 @@
 # Bloom TV OS Lite — Progress Log
 
-Last updated: 2026-11-19
+Last updated: 2026-11-20
 
 ## Current status
 
@@ -26,9 +26,9 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 
 ## Validation
 
-- GitHub Actions run #92: **SUCCESS** on commit `07ac9ff6`. Unit tests, debug APK build and artifact upload passed; preview release publishing also completed.
-- GitHub Actions run #91: **SUCCESS** on commit `5484c9f9` (tests and build passed).
-- Runs #86–#90 exposed compile errors in the new accessibility semantics and theme-picker parameter; these were corrected before #91/#92.
+- GitHub Actions run #93: **SUCCESS** on commit `382427d9`. Unit tests, debug APK build and artifact upload passed; preview-release publishing was skipped for a documentation/workflow-only commit. Unit tests, debug APK build and artifact upload passed; preview release publishing also completed.
+- GitHub Actions run #92: **SUCCESS** on commit `07ac9ff6` (tests, build, artifact upload and preview release passed).
+- Runs #86–#90 exposed compile errors in accessibility semantics and the theme-picker parameter; these were corrected before #91/#92.
 - Local pure-Kotlin checks: **17 assertions passed** for version comparison, release-URL validation, app sorting and update-status resolution.
 - Local Android build: **NOT RUN**, because this environment has no Gradle installation or Android SDK.
 - No Android TV emulator or physical-device test has been run.

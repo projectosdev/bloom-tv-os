@@ -43,4 +43,24 @@ class TvAppCatalogTest {
             sortTvApps(apps).map { it.packageName }
         )
     }
+    @Test
+    fun keepsDistinctLauncherActivitiesWithinOnePackage() {
+        val apps = listOf(
+            TvApp("Player", "com.example.player", "com.example.player.ZActivity", TV_LAUNCHER_CATEGORY, "Android TV app"),
+            TvApp("Player", "com.example.player", "com.example.player.AActivity", TV_LAUNCHER_CATEGORY, "Android TV app")
+        )
+
+        val sorted = sortTvApps(apps)
+        assertEquals(
+            listOf("com.example.player.AActivity", "com.example.player.ZActivity"),
+            sorted.map { it.activityName }
+        )
+        assertEquals(
+            listOf(
+                "com.example.player/com.example.player.AActivity",
+                "com.example.player/com.example.player.ZActivity"
+            ),
+            sorted.map { it.componentKey }
+        )
+    }
 }

@@ -1,9 +1,9 @@
 # Bloom TV OS Lite build status
 
-Last verified: 2026-11-19
+Last verified: 2026-11-20
 
-- GitHub Actions run #92 succeeded on commit `07ac9ff6a11062518c1beb2fc542a03af4e17a95`: `:app:testDebugUnitTest`, `:app:assembleDebug`, and APK artifact upload all passed.
-- The `bloom-tv-os-debug` artifact was uploaded (16.1 MB) and expires 2026-11-26.
+- GitHub Actions run #93 succeeded on commit `382427d9b45b65c3e74703c838d51aebefb7be45`: `:app:testDebugUnitTest`, `:app:assembleDebug`, and APK artifact upload all passed.
+- The `bloom-tv-os-debug` artifact was uploaded (16.1 MB) and expires 2026-11-26. Run #92 also passed the same test/build/upload steps and published a preview debug release. Run #93 skipped preview-release publishing because the commit changed no app source.
 - The feature-branch workflow also published a preview debug APK release. This is not an OTA or firmware update.
 - Local pure-Kotlin checks passed 17 assertions covering version comparison, trusted release URLs, app sorting, and update-state resolution.
 - A local Android build was **NOT RUN**: this environment has no Gradle installation or Android SDK.

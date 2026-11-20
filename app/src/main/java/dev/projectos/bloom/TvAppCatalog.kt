@@ -10,7 +10,13 @@ internal data class TvApp(
     val activityName: String,
     val launcherCategory: String,
     val detail: String
-)
+) {
+    val componentKey: String
+        get() = launcherComponentKey(packageName, activityName)
+}
+
+internal fun launcherComponentKey(packageName: String, activityName: String): String =
+    "$packageName/$activityName"
 
 /**
  * Keep Android TV-ready apps at the front of the launcher, then sort each group
@@ -21,4 +27,5 @@ internal fun sortTvApps(apps: Iterable<TvApp>): List<TvApp> =
         compareBy<TvApp> { it.launcherCategory != TV_LAUNCHER_CATEGORY }
             .thenBy { it.title.trim().lowercase(Locale.ROOT) }
             .thenBy { it.packageName }
+            .thenBy { it.activityName }
     )
