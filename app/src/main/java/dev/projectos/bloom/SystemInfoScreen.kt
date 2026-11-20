@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 internal fun SystemInfoScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val initialFocusRequester = remember { FocusRequester() }
+    var backFocused by remember { mutableStateOf(false) }
     RequestFocusOnEntry(initialFocusRequester)
     val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
     val versionName = packageInfo.versionName ?: "Unknown"
@@ -42,11 +43,11 @@ internal fun SystemInfoScreen(onBack: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Surface(
-                modifier = Modifier.focusRequester(initialFocusRequester),
+                modifier = Modifier.focusRequester(initialFocusRequester).onFocusChanged { backFocused = it.isFocused },
                 onClick = onBack,
-                color = Color(0x22FFFFFF),
+                color = if (backFocused) Color(0xFF3A4A6D) else Color(0x22FFFFFF),
                 shape = CircleShape,
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                border = BorderStroke(if (backFocused) 2.dp else 1.dp, if (backFocused) BloomAccent.value else Color.White.copy(alpha = 0.15f))
             ) {
                 Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.ArrowBack, "Back", tint = Color(0xFFE9ECF6))

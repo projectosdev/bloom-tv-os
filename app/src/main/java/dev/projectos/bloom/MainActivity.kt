@@ -565,34 +565,30 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
                         Text(clockText, color = Ink, fontSize = 12.sp)
                     }
                     Spacer(Modifier.width(14.dp))
-                    Surface(
-                        modifier = Modifier.focusRequester(storeFocusRequester),
+                    BloomHeaderAction(
                         onClick = { showStore = true },
-                        color = Color(0xFF684D70),
-                        shape = RoundedCornerShape(30.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        modifier = Modifier.focusRequester(storeFocusRequester),
+                        motionAllowed = motionAllowed,
+                        color = Color(0xFF684D70)
                     ) {
                         Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("Store", color = Color.White, fontSize = 12.sp)
                         }
                     }
                     Spacer(Modifier.width(10.dp))
-                    Surface(
+                    BloomHeaderAction(
                         onClick = { showAppLibrary = true },
-                        color = Glass,
-                        shape = RoundedCornerShape(30.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                        motionAllowed = motionAllowed
                     ) {
                         Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("Apps", color = Ink, fontSize = 12.sp)
                         }
                     }
                     Spacer(Modifier.width(10.dp))
-                    Surface(
+                    BloomHeaderAction(
                         onClick = { showProfiles = true },
-                        color = Color(0x334F6A9A),
-                        shape = RoundedCornerShape(30.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                        motionAllowed = motionAllowed,
+                        color = Color(0x334F6A9A)
                     ) {
                         Row(Modifier.padding(horizontal = 13.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(25.dp).background(Color(0xFF879ED8), CircleShape), contentAlignment = Alignment.Center) {
@@ -603,20 +599,17 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
                         }
                     }
                     Spacer(Modifier.width(10.dp))
-                    Surface(
+                    BloomHeaderAction(
                         onClick = { showControlCentre = true },
-                        color = Color(0x334F6A9A),
-                        shape = RoundedCornerShape(30.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                        motionAllowed = motionAllowed,
+                        color = Color(0x334F6A9A)
                     ) {
                         Text("Quick settings", modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp), color = Ink, fontSize = 12.sp)
                     }
                     Spacer(Modifier.width(8.dp))
-                    Surface(
+                    BloomHeaderAction(
                         onClick = { showSettings = true },
-                        color = Glass,
-                        shape = RoundedCornerShape(30.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+                        motionAllowed = motionAllowed
                     ) {
                         Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.Settings, null, tint = Ink, modifier = Modifier.size(16.dp))
@@ -1031,6 +1024,33 @@ private fun BloomActionSurface(
         border = BorderStroke(
             if (focused) 2.dp else 1.dp,
             if (focused) BloomAccent.value else Color.White.copy(alpha = 0.12f)
+        ),
+        content = content
+    )
+}
+
+@Composable
+private fun BloomHeaderAction(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    motionAllowed: Boolean,
+    color: Color = Glass,
+    content: @Composable () -> Unit
+) {
+    var focused by remember { mutableStateOf(false) }
+    val background by animateColorAsState(
+        targetValue = if (focused) Color(0xFF3A4A6D) else color,
+        animationSpec = tween(if (motionAllowed) 140 else 0),
+        label = "bloom-header-action-focus"
+    )
+    Surface(
+        onClick = onClick,
+        modifier = modifier.onFocusChanged { focused = it.isFocused },
+        color = background,
+        shape = RoundedCornerShape(30.dp),
+        border = BorderStroke(
+            if (focused) 2.dp else 1.dp,
+            if (focused) BloomAccent.value else Color.White.copy(alpha = 0.16f)
         ),
         content = content
     )
