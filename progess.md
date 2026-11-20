@@ -5,7 +5,7 @@ Last updated: 2026-11-20
 ## Current status
 
 **Stage:** Settings, launcher reliability, accessibility and update-preview improvements on PR #1.  
-**Build status:** GitHub Actions run #93 passed unit tests, debug APK build and artifact upload for commit `382427d9`. Run #94 is validating the current launcher-activity changes.  
+**Build status:** GitHub Actions run #94 passed tests and APK build on commit `de1cee33`. Run #95 exposed a Kotlin compile error in the new list-based discovery return; it is corrected in the current commit and run #97 is validating it.  
 **Device status:** No physical Android TV / Google TV or emulator test has been recorded.
 
 Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It is not replacement firmware or a complete standalone TV operating system.
@@ -27,8 +27,9 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 ## Validation
 
 - GitHub Actions run #93: **SUCCESS** on commit `382427d9`. Unit tests, debug APK build and artifact upload passed; preview-release publishing was skipped because no app source changed.
-- GitHub Actions run #94: validation of launcher component deduplication and exact-activity launching is **IN PROGRESS**.
-- GitHub Actions run #92: **SUCCESS** on commit `07ac9ff6` (tests, build, artifact upload and preview release passed).
+- GitHub Actions run #94: **SUCCESS** on commit `de1cee33`; tests and APK build passed.
+- GitHub Actions run #95: **FAILURE** during Kotlin compilation (`discovered.values` on a list). This was corrected in the current commit; run #97 is pending.
+- GitHub Actions run #93: **SUCCESS** on commit `382427d9` (tests, build and artifact upload passed).
 - Runs #86–#90 exposed compile errors in accessibility semantics and the theme-picker parameter; these were corrected before #91/#92.
 - Local pure-Kotlin checks: **17 assertions passed** for version comparison, release-URL validation, app sorting and update-status resolution.
 - Local Android build: **NOT RUN**, because this environment has no Gradle installation or Android SDK.

@@ -268,7 +268,7 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
         }
     }
 
-    return sortTvApps(discovered.values)
+    return sortTvApps(discovered)
 }
 
 private fun launchBloomApp(context: android.content.Context, app: TvApp) {
