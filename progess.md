@@ -28,7 +28,7 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 
 - GitHub Actions run #93: **SUCCESS** on commit `382427d9`. Unit tests, debug APK build and artifact upload passed; preview-release publishing was skipped because no app source changed.
 - GitHub Actions run #94: **SUCCESS** on commit `de1cee33`; tests and APK build passed.
-- GitHub Actions run #95: **FAILURE** during Kotlin compilation (`discovered.values` on a list). This was corrected in the current commit; run #97 is pending.
+- GitHub Actions run #95: **FAILURE** during Kotlin compilation (`discovered.values` on a list). This was corrected in the current commit; run #98 is pending.
 - GitHub Actions run #93: **SUCCESS** on commit `382427d9` (tests, build and artifact upload passed).
 - Runs #86–#90 exposed compile errors in accessibility semantics and the theme-picker parameter; these were corrected before #91/#92.
 - Local pure-Kotlin checks: **17 assertions passed** for version comparison, release-URL validation, app sorting and update-status resolution.
