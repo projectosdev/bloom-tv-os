@@ -60,7 +60,7 @@ jobs:
 
   publish-release:
     name: Publish Bloom debug release
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/settings-updates-animations' && (contains(join(github.event.head_commit.modified, ','), 'app/') || contains(join(github.event.head_commit.added, ','), 'app/') || contains(join(github.event.head_commit.removed, ','), 'app/'))
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/settings-updates-animations'
     needs: build-debug
     runs-on: ubuntu-latest
     permissions:
