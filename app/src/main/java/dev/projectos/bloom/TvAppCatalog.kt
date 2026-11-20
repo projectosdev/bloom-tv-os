@@ -19,11 +19,30 @@ internal fun launcherComponentKey(packageName: String, activityName: String): St
     "$packageName/$activityName"
 
 /**
+ * Deduplicate launcher results by component, preferring the Android TV category
+ * when the same activity is returned by both TV and standard launcher queries.
+ */
+internal fun uniqueLauncherActivities(apps: Iterable<TvApp>): List<TvApp> {
+    val unique = linkedMapOf<String, TvApp>()
+    for (app in apps) {
+        val existing = unique[app.componentKey]
+        if (existing == null || (
+            existing.launcherCategory != TV_LAUNCHER_CATEGORY &&
+                app.launcherCategory == TV_LAUNCHER_CATEGORY
+            )
+        ) {
+            unique[app.componentKey] = app
+        }
+    }
+    return unique.values.toList()
+}
+
+/**
  * Keep Android TV-ready apps at the front of the launcher, then sort each group
- * predictably by display name and package name.
+ * predictably by display name, package name, and activity name.
  */
 internal fun sortTvApps(apps: Iterable<TvApp>): List<TvApp> =
-    apps.sortedWith(
+    uniqueLauncherActivities(apps).sortedWith(
         compareBy<TvApp> { it.launcherCategory != TV_LAUNCHER_CATEGORY }
             .thenBy { it.title.trim().lowercase(Locale.ROOT) }
             .thenBy { it.packageName }

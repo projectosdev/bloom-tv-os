@@ -246,7 +246,7 @@ class MainActivity : ComponentActivity() {
 private fun discoverTvApps(context: android.content.Context): List<TvApp> {
     val packageManager = context.packageManager
     val categories = listOf(Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER)
-    val discovered = linkedMapOf<String, TvApp>()
+    val discovered = mutableListOf<TvApp>()
 
     for (category in categories) {
         val query = Intent(Intent.ACTION_MAIN).addCategory(category)
@@ -258,13 +258,12 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
             if (!activityInfo.enabled || !activityInfo.exported || !applicationInfo.enabled) continue
 
             val packageName = activityInfo.packageName
-            val componentKey = launcherComponentKey(packageName, activityInfo.name)
-            if (packageName == context.packageName || discovered.containsKey(componentKey)) continue
+            if (packageName == context.packageName) continue
             val label = runCatching { resolveInfo.loadLabel(packageManager).toString().trim() }
                 .getOrDefault("")
             if (label.isNotEmpty()) {
                 val detail = if (category == Intent.CATEGORY_LEANBACK_LAUNCHER) "Android TV app" else "Android app"
-                discovered[componentKey] = TvApp(label, packageName, activityInfo.name, category, detail)
+                discovered += TvApp(label, packageName, activityInfo.name, category, detail)
             }
         }
     }
@@ -1630,7 +1629,7 @@ private fun QuickToggleCard(title: String, subtitle: String, checked: Boolean, o
                 checked = checked,
                 onCheckedChange = onChange,
                 modifier = Modifier.onFocusChanged { focused = it.isFocused }.semantics {
-                    contentDescription = title
+                    contentDescription = "$title. $subtitle"
                 }
             )
         }

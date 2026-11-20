@@ -44,6 +44,14 @@ class TvAppCatalogTest {
         )
     }
     @Test
+    fun prefersTvCategoryWhenOneComponentAppearsInBothQueries() {
+        val standard = TvApp("Player", "com.example.player", "com.example.player.MainActivity", "android.intent.category.LAUNCHER", "Android app")
+        val tv = standard.copy(launcherCategory = TV_LAUNCHER_CATEGORY, detail = "Android TV app")
+
+        assertEquals(listOf("Android TV app"), sortTvApps(listOf(standard, tv)).map { it.detail })
+    }
+
+    @Test
     fun keepsDistinctLauncherActivitiesWithinOnePackage() {
         val apps = listOf(
             TvApp("Player", "com.example.player", "com.example.player.ZActivity", TV_LAUNCHER_CATEGORY, "Android TV app"),
