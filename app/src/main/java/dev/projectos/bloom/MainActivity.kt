@@ -530,7 +530,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
             withFrameNanos { }
             if (!homeHasFocus) {
                 val focusedApp = installed.isNotEmpty() &&
-                    runCatching { homeFocusRequester.requestFocus() }.getOrDefault(false)
+                    runCatching { homeFocusRequester.requestFocus() }.isSuccess
                 if (!focusedApp) runCatching { storeFocusRequester.requestFocus() }
             }
         }
@@ -1370,19 +1370,17 @@ private fun AppTile(
         border = BorderStroke(if (focused) 2.dp else 1.dp, if (focused) BloomAccent.value else Color.White.copy(alpha = 0.12f))
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            if (appIcon != null) {
+            appIcon?.let { icon ->
                 Image(
-                    bitmap = appIcon.asImageBitmap(),
+                    bitmap = icon.asImageBitmap(),
                     contentDescription = "${app.title} app icon",
                     modifier = Modifier.size(if (compact) 38.dp else 48.dp)
                 )
-            } else {
-                Box(
-                    Modifier.size(48.dp).background(Color(0x334F405F), RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 25.sp, fontWeight = FontWeight.Light)
-                }
+            } ?: Box(
+                Modifier.size(48.dp).background(Color(0x334F405F), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(app.title.take(1).uppercase(), color = BloomAccent.value, fontSize = 25.sp, fontWeight = FontWeight.Light)
             }
             Column {
                 Text(app.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
