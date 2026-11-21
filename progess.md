@@ -5,7 +5,7 @@ Last updated: 2026-11-21
 ## Current status
 
 **Stage:** Settings, launcher reliability, accessibility, focus and update-preview improvements on PR #1.  
-**Build status:** GitHub Actions run #103 passed tests, debug APK build, artifact upload and preview release on current commit `8da069ce`.  
+**Build status:** GitHub Actions run #103 passed tests, debug APK build, artifact upload and preview release on code commit `8da069ce`.  
 **Device status:** No physical Android TV / Google TV or emulator test has been recorded.
 
 Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It is not replacement firmware or a complete standalone TV operating system.
@@ -30,7 +30,7 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 
 ## Validation
 
-- GitHub Actions run #103: **SUCCESS** on current commit `8da069ce`. Unit tests, debug APK build, artifact upload and preview release v0.1.103 passed.
+- GitHub Actions run #103: **SUCCESS** on code commit `8da069ce`. Unit tests, debug APK build, artifact upload and preview release v0.1.103 passed.
 - Run #102: **SUCCESS** on `55107663`; unit tests, APK build, artifact upload and preview release v0.1.102 passed.
 - Runs #100 and #101 failed at Kotlin compilation because the focus/icon-loading refactor treated `requestFocus()` as returning Boolean and smart-cast a delegated bitmap. Both issues were corrected in `55107663`; the subsequent runs passed.
 - Local pure-Kotlin profile smoke checks: **5 assertions passed**. Earlier checks covered version comparison, trusted release URLs, app sorting and update status.
@@ -43,7 +43,7 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - App availability, streaming-service support, DRM and store installation are controlled by Android, device certification, publishers and Google Play.
 - Preview APKs use debug signing. Hosted runner debug keys may differ between builds, so Android may require an older preview to be uninstalled before a newer one can be installed.
 - D-pad focus, Back behaviour, app discovery/launching and update installation still need hands-on testing on target TV hardware.
-- PR #1 is open but not mergeable at present: it is 74 commits ahead and 23 behind current `main`, and GitHub reports conflicts. The branch was not merged or rebased into main.
+- PR #1 is open but not mergeable at present: it is 77 commits ahead and 23 behind current `main`, and GitHub reports conflicts. The branch was not merged or rebased into main.
 
 ## Next steps
 
