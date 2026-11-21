@@ -522,14 +522,16 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
 
     val homeFocusRequester = remember { FocusRequester() }
     val storeFocusRequester = remember { FocusRequester() }
+    var homeHasFocus by remember { mutableStateOf(false) }
     val homeVisible = !showSettings && !showAppLibrary && !showStore && !showSignUp &&
         !showControlCentre && !showBloomSearch && !showAmbient && !showProfiles
-    LaunchedEffect(homeVisible, installed.firstOrNull()?.componentKey) {
-        if (homeVisible) {
+    LaunchedEffect(homeVisible, appDiscoveryLoading) {
+        if (homeVisible && !homeHasFocus && !appDiscoveryLoading) {
             withFrameNanos { }
-            runCatching {
-                if (installed.isNotEmpty()) homeFocusRequester.requestFocus()
-                else storeFocusRequester.requestFocus()
+            if (!homeHasFocus) {
+                val focusedApp = installed.isNotEmpty() &&
+                    runCatching { homeFocusRequester.requestFocus() }.getOrDefault(false)
+                if (!focusedApp) runCatching { storeFocusRequester.requestFocus() }
             }
         }
     }
@@ -550,8 +552,12 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
             enter = fadeIn(tween(transitionDuration)) + slideInVertically(initialOffsetY = { if (motionAllowed) it / 30 else 0 }, animationSpec = tween(transitionDuration)),
             exit = fadeOut(tween(if (motionAllowed) 160 else 0)) + slideOutVertically(targetOffsetY = { if (motionAllowed) -it / 40 else 0 }, animationSpec = tween(if (motionAllowed) 180 else 0))
         ) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 54.dp, vertical = 34.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                Modifier.fillMaxSize()
+                    .padding(horizontal = 54.dp, vertical = 34.dp)
+                    .onFocusChanged { homeHasFocus = it.hasFocus }
+            ) {
+                Row(Modifier.fillMaxWidth().focusGroup(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("bloom", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
                         Text("TV OS LITE", color = BloomAccent.value, fontSize = 10.sp, letterSpacing = 3.sp)
@@ -1322,15 +1328,21 @@ private fun AppTile(
     launch: () -> Unit
 ) {
     val context = LocalContext.current
-    val appIcon = remember(app.packageName) {
-        runCatching {
-            val drawable = context.packageManager.getApplicationIcon(app.packageName)
-            Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888).also { bitmap ->
-                val canvas = Canvas(bitmap)
-                drawable.setBounds(0, 0, canvas.width, canvas.height)
-                drawable.draw(canvas)
+    val appIcon by produceState<Bitmap?>(initialValue = null, key1 = app.packageName) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                val drawable = context.packageManager.getApplicationIcon(app.packageName)
+                Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888).also { bitmap ->
+                    val canvas = Canvas(bitmap)
+                    drawable.setBounds(0, 0, canvas.width, canvas.height)
+                    drawable.draw(canvas)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                null
             }
-        }.getOrNull()
+        }
     }
     var focused by remember { mutableStateOf(false) }
     val targetScale = if (focused && animationsEnabled) 1.085f else 1f
@@ -1372,8 +1384,8 @@ private fun AppTile(
                 }
             }
             Column {
-                Text(app.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(app.detail, color = Ink.copy(alpha = 0.55f), fontSize = 11.sp)
+                Text(app.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(app.detail, color = Ink.copy(alpha = 0.55f), fontSize = 11.sp, maxLines = 1)
             }
         }
     }
@@ -1764,7 +1776,7 @@ private fun ThemePickerRow(selectedIndex: Int, onSelect: (Int) -> Unit) {
             Text("Bloom Themes", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             Text("Choose an accent colour", color = Ink.copy(alpha = 0.55f), fontSize = 10.sp)
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.focusGroup(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 BloomThemes.forEachIndexed { index, color ->
                     var focused by remember { mutableStateOf(false) }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1797,8 +1809,11 @@ private fun BloomProfilesScreen(currentName: String, motionAllowed: Boolean, onS
     val initialFocusRequester = remember { FocusRequester() }
     RequestFocusOnEntry(initialFocusRequester)
     val profileSet = remember { mutableStateListOf<String>().also { list ->
-        list.addAll((prefs.getStringSet("profile_names", emptySet()) ?: emptySet()).toList())
-        if (currentName.isNotBlank() && !list.contains(currentName)) list.add(currentName)
+        list.addAll(
+            sortBloomProfileNames(
+                (prefs.getStringSet("profile_names", emptySet()) ?: emptySet()) + currentName
+            )
+        )
     } }
     var newName by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().background(Color(0xF8070B16)).padding(horizontal = 54.dp, vertical = 30.dp)) {
@@ -1812,7 +1827,7 @@ private fun BloomProfilesScreen(currentName: String, motionAllowed: Boolean, onS
         }
         Spacer(Modifier.height(22.dp))
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(profileSet.distinct(), key = { it }) { profile ->
+            items(profileSet.toList(), key = { it }) { profile ->
                 BloomActionSurface(
                     onClick = { onSelect(profile) },
                     modifier = Modifier.fillMaxWidth(),
@@ -1832,9 +1847,15 @@ private fun BloomProfilesScreen(currentName: String, motionAllowed: Boolean, onS
             OutlinedTextField(value = newName, onValueChange = { newName = it.filter { c -> !c.isISOControl() }.take(32) }, modifier = Modifier.weight(1f), singleLine = true, label = { Text("New profile name") })
             Button(enabled = newName.trim().length >= 2, onClick = {
                 val name = newName.trim()
-                if (!profileSet.contains(name)) profileSet.add(name)
-                prefs.edit().putStringSet("profile_names", profileSet.toSet()).apply()
-                onSelect(name)
+                val existingName = findBloomProfileName(profileSet, name)
+                val selectedName = existingName ?: name
+                if (existingName == null) {
+                    val sortedNames = sortBloomProfileNames(profileSet + name)
+                    profileSet.clear()
+                    profileSet.addAll(sortedNames)
+                    prefs.edit().putStringSet("profile_names", sortedNames.toSet()).apply()
+                }
+                onSelect(selectedName)
             }, colors = ButtonDefaults.buttonColors(containerColor = BloomAccent.value, contentColor = Midnight)) { Text("Create") }
         }
         Text("Profiles are stored locally. They do not create separate Android accounts or lock apps.", color = Ink.copy(alpha = 0.42f), fontSize = 10.sp)

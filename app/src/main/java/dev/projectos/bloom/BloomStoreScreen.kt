@@ -54,10 +54,10 @@ internal fun BloomStoreScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var clientInstalled by remember { mutableStateOf(false) }
     val backFocus = remember { FocusRequester() }
+    RequestFocusOnEntry(backFocus)
 
     LaunchedEffect(Unit) {
         clientInstalled = context.packageManager.getLaunchIntentForPackage(FDROID_PACKAGE) != null
-        runCatching { backFocus.requestFocus() }
     }
 
     Column(
