@@ -555,6 +555,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
             Column(
                 Modifier.fillMaxSize()
                     .padding(horizontal = 54.dp, vertical = 34.dp)
+                    .focusGroup()
                     .onFocusChanged { homeHasFocus = it.hasFocus }
             ) {
                 Row(Modifier.fillMaxWidth().focusGroup(), verticalAlignment = Alignment.CenterVertically) {
