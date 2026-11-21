@@ -43,7 +43,7 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - App availability, streaming-service support, DRM and store installation are controlled by Android, device certification, publishers and Google Play.
 - Preview APKs use debug signing. Hosted runner debug keys may differ between builds, so Android may require an older preview to be uninstalled before a newer one can be installed.
 - D-pad focus, Back behaviour, app discovery/launching and update installation still need hands-on testing on target TV hardware.
-- PR #1 is open but not mergeable at present: it is 77 commits ahead and 23 behind current `main`, and GitHub reports conflicts. The branch was not merged or rebased into main.
+- PR #1 is open but not mergeable at present: it is 23 commits behind current `main`, and GitHub reports conflicts. The branch was not merged or rebased into main.
 
 ## Next steps
 

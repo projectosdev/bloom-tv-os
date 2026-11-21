@@ -12,4 +12,4 @@ Last verified: 2026-11-21
 
 The updater downloads a release APK and hands it to Android's package installer for user approval. It is not an OTA or firmware updater, and the installation flow has not been verified on hardware.
 
-PR #1 remains open. It is **77 commits ahead and 23 commits behind** current `main`; GitHub reports merge conflicts. No merge or rebase was performed.
+PR #1 remains open and is 23 commits behind current `main`; GitHub reports merge conflicts. No merge or rebase was performed.
