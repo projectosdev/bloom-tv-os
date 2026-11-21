@@ -1,11 +1,11 @@
 # Bloom TV OS Lite — Progress Log
 
-Last updated: 2026-11-20
+Last updated: 2026-11-21
 
 ## Current status
 
-**Stage:** Settings, launcher reliability, accessibility and update-preview improvements on PR #1.  
-**Build status:** GitHub Actions run #94 passed tests and APK build on commit `de1cee33`. Run #95 exposed a Kotlin compile error in the new list-based discovery return; it is corrected in the current commit and run #97 is validating it.  
+**Stage:** Settings, launcher reliability, accessibility, focus and update-preview improvements on PR #1.  
+**Build status:** GitHub Actions run #103 passed tests, debug APK build, artifact upload and preview release on current commit `8da069ce`.  
 **Device status:** No physical Android TV / Google TV or emulator test has been recorded.
 
 Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It is not replacement firmware or a complete standalone TV operating system.
@@ -15,6 +15,10 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Native Android TV / Google TV launcher entry points.
 - Installed-app discovery through Android launcher intents, with launch requests handled by Android. Activities are deduplicated by package/component, TV category is preferred, and launch targets the exact discovered activity before Android launcher fallbacks.
 - App discovery runs off the UI thread, refreshes on resume, filters disabled/unexported activities and exposes loading/error states.
+- App icons are loaded and rasterized asynchronously; long app labels are kept to one line in home tiles.
+- Home focus is grouped and restored only when the home screen needs focus, avoiding focus stealing while app discovery finishes. Header actions and theme swatches use focus groups.
+- Local profile names are trimmed, sorted deterministically and deduplicated case-insensitively.
+- The Store screen uses the shared frame-aware focus helper.
 - Home screen, app library, Bloom Search, curated store listings and Android settings shortcuts.
 - Local Bloom profiles, accent themes, home layout preferences and a quick settings panel.
 - Bloom Ambient screen and motion preferences; screen/focus transitions now honour Reduce Motion.
@@ -26,12 +30,10 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 
 ## Validation
 
-- GitHub Actions run #93: **SUCCESS** on commit `382427d9`. Unit tests, debug APK build and artifact upload passed; preview-release publishing was skipped because no app source changed.
-- GitHub Actions run #94: **SUCCESS** on commit `de1cee33`; tests and APK build passed.
-- GitHub Actions run #95: **FAILURE** during Kotlin compilation (`discovered.values` on a list). This was corrected in the current commit; run #98 is pending.
-- GitHub Actions run #93: **SUCCESS** on commit `382427d9` (tests, build and artifact upload passed).
-- Runs #86–#90 exposed compile errors in accessibility semantics and the theme-picker parameter; these were corrected before #91/#92.
-- Local pure-Kotlin checks: **17 assertions passed** for version comparison, release-URL validation, app sorting and update-status resolution.
+- GitHub Actions run #103: **SUCCESS** on current commit `8da069ce`. Unit tests, debug APK build, artifact upload and preview release v0.1.103 passed.
+- Run #102: **SUCCESS** on `55107663`; unit tests, APK build, artifact upload and preview release v0.1.102 passed.
+- Runs #100 and #101 failed at Kotlin compilation because the focus/icon-loading refactor treated `requestFocus()` as returning Boolean and smart-cast a delegated bitmap. Both issues were corrected in `55107663`; the subsequent runs passed.
+- Local pure-Kotlin profile smoke checks: **5 assertions passed**. Earlier checks covered version comparison, trusted release URLs, app sorting and update status.
 - Local Android build: **NOT RUN**, because this environment has no Gradle installation or Android SDK.
 - No Android TV emulator or physical-device test has been run.
 
@@ -41,7 +43,7 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - App availability, streaming-service support, DRM and store installation are controlled by Android, device certification, publishers and Google Play.
 - Preview APKs use debug signing. Hosted runner debug keys may differ between builds, so Android may require an older preview to be uninstalled before a newer one can be installed.
 - D-pad focus, Back behaviour, app discovery/launching and update installation still need hands-on testing on target TV hardware.
-- PR #1 is open but not mergeable at present: it is 23 commits behind current `main` and has conflicts. The branch was not merged or rebased into main.
+- PR #1 is open but not mergeable at present: it is 74 commits ahead and 23 behind current `main`, and GitHub reports conflicts. The branch was not merged or rebased into main.
 
 ## Next steps
 
