@@ -71,4 +71,19 @@ class TvAppCatalogTest {
             sorted.map { it.componentKey }
         )
     }
+
+    @Test
+    fun launcherQueriesDoNotRequireDefaultCategory() {
+        assertEquals(0, LAUNCHER_ACTIVITY_QUERY_FLAGS)
+    }
+
+    @Test
+    fun excludesDisabledUnexportedAppsAndBlankLabels() {
+        assertEquals(true, isEligibleLauncherActivity(true, true, true, "Player"))
+        assertEquals(false, isEligibleLauncherActivity(false, true, true, "Player"))
+        assertEquals(false, isEligibleLauncherActivity(true, false, true, "Player"))
+        assertEquals(false, isEligibleLauncherActivity(true, true, false, "Player"))
+        assertEquals(false, isEligibleLauncherActivity(true, true, true, "   "))
+    }
+
 }

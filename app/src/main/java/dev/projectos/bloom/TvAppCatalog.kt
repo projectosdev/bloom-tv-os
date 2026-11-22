@@ -4,6 +4,20 @@ import java.util.Locale
 
 internal const val TV_LAUNCHER_CATEGORY = "android.intent.category.LEANBACK_LAUNCHER"
 
+/**
+ * Launcher intent filters commonly omit CATEGORY_DEFAULT. MATCH_DEFAULT_ONLY
+ * would therefore hide valid MAIN/LAUNCHER activities from a launcher query.
+ */
+internal const val LAUNCHER_ACTIVITY_QUERY_FLAGS = 0
+
+internal fun isEligibleLauncherActivity(
+    activityEnabled: Boolean,
+    activityExported: Boolean,
+    applicationEnabled: Boolean,
+    title: String
+): Boolean =
+    activityEnabled && activityExported && applicationEnabled && title.isNotBlank()
+
 internal data class TvApp(
     val title: String,
     val packageName: String,

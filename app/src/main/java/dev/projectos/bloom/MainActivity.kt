@@ -251,20 +251,24 @@ private fun discoverTvApps(context: android.content.Context): List<TvApp> {
     for (category in categories) {
         val query = Intent(Intent.ACTION_MAIN).addCategory(category)
         @Suppress("DEPRECATION")
-        val activities = packageManager.queryIntentActivities(query, PackageManager.MATCH_DEFAULT_ONLY)
+        val activities = packageManager.queryIntentActivities(query, LAUNCHER_ACTIVITY_QUERY_FLAGS)
         for (resolveInfo in activities) {
             val activityInfo = resolveInfo.activityInfo ?: continue
             val applicationInfo = activityInfo.applicationInfo
-            if (!activityInfo.enabled || !activityInfo.exported || !applicationInfo.enabled) continue
-
             val packageName = activityInfo.packageName
             if (packageName == context.packageName) continue
             val label = runCatching { resolveInfo.loadLabel(packageManager).toString().trim() }
                 .getOrDefault("")
-            if (label.isNotEmpty()) {
-                val detail = if (category == Intent.CATEGORY_LEANBACK_LAUNCHER) "Android TV app" else "Android app"
-                discovered += TvApp(label, packageName, activityInfo.name, category, detail)
-            }
+            if (!isEligibleLauncherActivity(
+                    activityEnabled = activityInfo.enabled,
+                    activityExported = activityInfo.exported,
+                    applicationEnabled = applicationInfo.enabled,
+                    title = label
+                )
+            ) continue
+
+            val detail = if (category == Intent.CATEGORY_LEANBACK_LAUNCHER) "Android TV app" else "Android app"
+            discovered += TvApp(label, packageName, activityInfo.name, category, detail)
         }
     }
 
