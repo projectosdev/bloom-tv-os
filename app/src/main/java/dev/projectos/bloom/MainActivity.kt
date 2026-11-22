@@ -6,7 +6,6 @@ import android.app.DownloadManager
 import android.os.Environment
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build

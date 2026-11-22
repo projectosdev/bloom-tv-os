@@ -1,6 +1,8 @@
 package dev.projectos.bloom
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TvAppCatalogTest {
@@ -79,11 +81,11 @@ class TvAppCatalogTest {
 
     @Test
     fun excludesDisabledUnexportedAppsAndBlankLabels() {
-        assertEquals(true, isEligibleLauncherActivity(true, true, true, "Player"))
-        assertEquals(false, isEligibleLauncherActivity(false, true, true, "Player"))
-        assertEquals(false, isEligibleLauncherActivity(true, false, true, "Player"))
-        assertEquals(false, isEligibleLauncherActivity(true, true, false, "Player"))
-        assertEquals(false, isEligibleLauncherActivity(true, true, true, "   "))
+        assertTrue(isEligibleLauncherActivity(true, true, true, "Player"))
+        assertFalse(isEligibleLauncherActivity(false, true, true, "Player"))
+        assertFalse(isEligibleLauncherActivity(true, false, true, "Player"))
+        assertFalse(isEligibleLauncherActivity(true, true, false, "Player"))
+        assertFalse(isEligibleLauncherActivity(true, true, true, "   "))
     }
 
 }
