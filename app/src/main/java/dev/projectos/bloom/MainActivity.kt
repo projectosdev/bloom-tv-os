@@ -453,19 +453,22 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
     LaunchedEffect(Unit) {
         while (true) {
             updateCheckInProgress = true
-            val check = runCatching { checkForBloomUpdate(context) }
-            if (check.isSuccess) {
-                availableUpdate = check.getOrNull()
-                hasCompletedUpdateCheck = true
-                updateMessage = if (availableUpdate == null) {
-                    "Bloom is up to date."
+            try {
+                val check = runBloomCancellable { checkForBloomUpdate(context) }
+                if (check.isSuccess) {
+                    availableUpdate = check.getOrNull()
+                    hasCompletedUpdateCheck = true
+                    updateMessage = if (availableUpdate == null) {
+                        "Bloom is up to date."
+                    } else {
+                        "A new version is ready to install."
+                    }
                 } else {
-                    "A new version is ready to install."
+                    updateMessage = "Couldn't check for updates. Check your internet connection and try again."
                 }
-            } else {
-                updateMessage = "Couldn't check for updates. Check your internet connection and try again."
+            } finally {
+                updateCheckInProgress = false
             }
-            updateCheckInProgress = false
             delay(6 * 60 * 60 * 1000L)
         }
     }
@@ -821,7 +824,7 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
                                 updateCheckInProgress = true
                                 updateMessage = "Checking for updates…"
                                 try {
-                                    val check = runCatching { checkForBloomUpdate(context) }
+                                    val check = runBloomCancellable { checkForBloomUpdate(context) }
                                     if (check.isSuccess) {
                                         availableUpdate = check.getOrNull()
                                         hasCompletedUpdateCheck = true
@@ -839,9 +842,12 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
                         if (!updateBusy && !updateCheckInProgress) {
                             updateScope.launch {
                                 updateBusy = true
-                                runCatching { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }
-                                    .onFailure { updateMessage = it.message ?: "Couldn't install this update." }
-                                updateBusy = false
+                                try {
+                                    runBloomCancellable { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }
+                                        .onFailure { updateMessage = it.message ?: "Couldn't install this update." }
+                                } finally {
+                                    updateBusy = false
+                                }
                             }
                         }
                     },
@@ -906,9 +912,12 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
                 TextButton(enabled = !updateBusy && !updateCheckInProgress, onClick = {
                     updateScope.launch {
                         updateBusy = true
-                        runCatching { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }
-                            .onFailure { updateMessage = it.message ?: "Couldn't download the update." }
-                        updateBusy = false
+                        try {
+                            runBloomCancellable { downloadAndInstallBloomUpdate(context, update) { updateMessage = it } }
+                                .onFailure { updateMessage = it.message ?: "Couldn't download the update." }
+                        } finally {
+                            updateBusy = false
+                        }
                     }
                 }) { Text(if (updateBusy) "Downloading…" else "Update Bloom") }
             },
