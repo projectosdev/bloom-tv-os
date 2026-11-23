@@ -74,3 +74,10 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Added job-level preview release concurrency to `.github/workflows/android-debug.yml` so newer pushes supersede stale publish jobs.
 - Run #108 passed tests, debug build, artifact upload and preview release on `218f5faf`. Run #109 is validating the workflow change.
 - Local Android build and TV hardware/emulator testing remain NOT RUN: no Gradle/Android SDK or device is available.
+
+## 2026-11-23 — Validation complete
+
+- Run #109 passed the workflow concurrency change and published preview v0.1.109; it is verified as the latest release.
+- Runs #106–#108 passed unit tests, debug APK builds, artifact uploads and preview-release publishing.
+- The code commit `218f5faf` passed run #108 after the cancellation-safe update changes.
+- The local Android build and physical TV/emulator tests remain NOT RUN because no Gradle/Android SDK or device is available.
