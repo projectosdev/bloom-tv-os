@@ -1,11 +1,11 @@
 # Bloom TV OS Lite — Progress Log
 
-Last updated: 2026-11-22
+Last updated: 2026-11-23
 
 ## Current status
 
-**Stage:** Settings, launcher reliability, accessibility, focus, update-preview improvements and launcher-query correction on PR #1.  
-**Build status:** GitHub Actions run #104 passed tests, debug APK build, artifact upload and preview release v0.1.104 on commit `37ded1fe`.  
+**Stage:** Settings, launcher reliability, accessibility, focus, update-preview improvements, launcher-query correction and cancellation-safe update operations on PR #1.  
+**Build status:** GitHub Actions run #105 passed tests, debug APK build, artifact upload and preview release publishing on commit `31874834`. The cancellation-safety changes on `218f5faf` are awaiting CI.  
 **Device status:** No physical Android TV / Google TV or emulator test has been recorded.
 
 Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It is not replacement firmware or a complete standalone TV operating system.
@@ -26,11 +26,14 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Settings, About and Software Update screens.
 - Software Update checks the project's GitHub Releases feed, compares dotted versions, accepts only the expected APK from the trusted release path, downloads it and hands it to Android's package installer for explicit user approval.
 - Failed/cancelled downloads are removed. Update installation remains user-controlled; this is not an OTA firmware updater.
+- Update checks and installer hand-offs now preserve `CancellationException` rather than swallowing coroutine cancellation; ordinary exceptions are surfaced as `Result` failures. Three regression tests cover success, failure and cancellation.
 - GitHub Actions builds and uploads a debug APK; feature-branch code pushes publish preview releases.
 
 ## Validation
 
-- GitHub Actions run #104: **SUCCESS** on commit `37ded1fe`. Unit tests, debug APK build, artifact upload and preview release v0.1.104 passed.
+- GitHub Actions run #105: **SUCCESS** on commit `31874834`. Unit tests, debug APK build, artifact upload and preview release publishing passed.
+- Current cancellation-safety code commit `218f5faf` has not yet completed CI.
+- Added 3 unit tests for the cancellation-safe result helper. Standalone Kotlin smoke assertions also passed locally.
 - Run #102: **SUCCESS** on `55107663`; unit tests, APK build, artifact upload and preview release v0.1.102 passed.
 - Runs #100 and #101 failed at Kotlin compilation because the focus/icon-loading refactor treated `requestFocus()` as returning Boolean and smart-cast a delegated bitmap. Both issues were corrected in `55107663`; the subsequent runs passed.
 - Local pure-Kotlin profile smoke checks: **5 assertions passed**. Earlier checks covered version comparison, trusted release URLs, app sorting and update status.
@@ -43,7 +46,7 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - App availability, streaming-service support, DRM and store installation are controlled by Android, device certification, publishers and Google Play.
 - Preview APKs use debug signing. Hosted runner debug keys may differ between builds, so Android may require an older preview to be uninstalled before a newer one can be installed.
 - D-pad focus, Back behaviour, app discovery/launching and update installation still need hands-on testing on target TV hardware.
-- PR #1 is open but not mergeable at present: it is 80 commits ahead and 23 behind current `main`, and GitHub reports conflicts. The branch was not merged or rebased into main.
+- PR #1 is open but not mergeable at present: it is 86 commits ahead and 23 behind current `main`, and GitHub reports conflicts. The branch was not merged or rebased into main.
 
 ## Next steps
 
@@ -53,3 +56,11 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 4. Test the release-check, download and Android installation-approval flow on hardware.
 5. Decide on a stable signing and release process before distributing builds beyond preview testing.
 6. Treat standalone firmware work as a separate platform project with a chosen target device.
+
+## 2026-11-23 — Cancellation-safe update operations
+
+- Added `BloomCancellableResult.kt` with a small helper that preserves coroutine cancellation and wraps ordinary exceptions.
+- Replaced cancellation-swallowing `runCatching` around automatic/manual update checks and APK install hand-offs. Busy/checking flags are reset in `finally` blocks.
+- Added `BloomCancellableResultTest.kt` for success, failure and cancellation.
+- GitHub Actions run #105 on the prior commit `31874834` succeeded. The new code head `218f5faf` still needs CI.
+- Local Android build and device tests remain NOT RUN: no Gradle/Android SDK or Android TV hardware/emulator is available.
