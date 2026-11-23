@@ -26,6 +26,8 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Settings, About and Software Update screens.
 - Software Update checks the project's GitHub Releases feed, compares dotted versions, accepts only the expected APK from the trusted release path, downloads it and hands it to Android's package installer for explicit user approval.
 - Failed/cancelled downloads are removed. Update installation remains user-controlled; this is not an OTA firmware updater.
+- Update checks and APK installer hand-offs preserve coroutine cancellation instead of swallowing `CancellationException`; checking/downloading flags reset in `finally` blocks.
+- Preview-release publishing now has a concurrency group that cancels older queued/running publish jobs so stale previews cannot race to become latest.
 - Update checks and installer hand-offs now preserve `CancellationException` rather than swallowing coroutine cancellation; ordinary exceptions are surfaced as `Result` failures. Three regression tests cover success, failure and cancellation.
 - GitHub Actions builds and uploads a debug APK; feature-branch code pushes publish preview releases.
 
@@ -46,7 +48,7 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - App availability, streaming-service support, DRM and store installation are controlled by Android, device certification, publishers and Google Play.
 - Preview APKs use debug signing. Hosted runner debug keys may differ between builds, so Android may require an older preview to be uninstalled before a newer one can be installed.
 - D-pad focus, Back behaviour, app discovery/launching and update installation still need hands-on testing on target TV hardware.
-- PR #1 is open but not mergeable at present: it is 86 commits ahead and 23 behind current `main`, and GitHub reports conflicts. The branch was not merged or rebased into main.
+- PR #1 is open but not mergeable at present: it is diverged from current `main`, with 23 commits behind and merge conflicts, and GitHub reports conflicts. The branch was not merged or rebased into main.
 
 ## Next steps
 
@@ -64,3 +66,11 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Added `BloomCancellableResultTest.kt` for success, failure and cancellation.
 - GitHub Actions run #105 on the prior commit `31874834` succeeded. The new code head `218f5faf` still needs CI.
 - Local Android build and device tests remain NOT RUN: no Gradle/Android SDK or Android TV hardware/emulator is available.
+
+## 2026-11-23 — Update cancellation and release ordering
+
+- Added `BloomCancellableResult.kt` and three tests to preserve cancellation while surfacing ordinary errors.
+- Wired the helper into automatic/manual update checks and APK download/install hand-offs; busy/checking flags reset in `finally` blocks.
+- Added job-level preview release concurrency to `.github/workflows/android-debug.yml` so newer pushes supersede stale publish jobs.
+- Run #108 passed tests, debug build, artifact upload and preview release on `218f5faf`. Run #109 is validating the workflow change.
+- Local Android build and TV hardware/emulator testing remain NOT RUN: no Gradle/Android SDK or device is available.
