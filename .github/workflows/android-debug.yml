@@ -62,6 +62,11 @@ jobs:
     name: Publish Bloom debug release
     if: github.event_name == 'push' && github.ref == 'refs/heads/feature/settings-updates-animations'
     needs: build-debug
+    # Newer pushes supersede queued/running preview publishing so an older APK
+    # cannot become the latest release after a newer preview has already shipped.
+    concurrency:
+      group: bloom-tv-preview-release
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: write
