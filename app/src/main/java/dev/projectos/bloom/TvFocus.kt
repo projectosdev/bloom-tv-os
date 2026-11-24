@@ -13,6 +13,8 @@ import androidx.compose.ui.focus.FocusRequester
 internal fun RequestFocusOnEntry(focusRequester: FocusRequester) {
     LaunchedEffect(focusRequester) {
         withFrameNanos { }
-        runCatching { focusRequester.requestFocus() }
+        // Keep a detached focus target from crashing screen entry, but never
+        // swallow CancellationException when this screen leaves composition.
+        runBloomCancellable { focusRequester.requestFocus() }
     }
 }
