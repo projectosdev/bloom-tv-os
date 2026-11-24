@@ -196,8 +196,9 @@ private suspend fun downloadAndInstallBloomUpdate(
         .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, filename)
     val downloadId = manager.enqueue(request)
     onStatus("Downloading Bloom ${update.versionName}…")
-    val apkUri = try {
-        withContext(Dispatchers.IO) {
+    var installerLaunched = false
+    try {
+        val apkUri = withContext(Dispatchers.IO) {
             repeat(180) {
                 val cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
                 cursor.use {
@@ -218,20 +219,21 @@ private suspend fun downloadAndInstallBloomUpdate(
             }
             throw IllegalStateException("The download is taking too long. Check your connection and try again.")
         }
+        withContext(Dispatchers.Main) {
+            onStatus("Download complete. Waiting for installation approval…")
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(installIntent)
+            installerLaunched = true
+        }
     } catch (cancelled: CancellationException) {
-        runCatching { manager.remove(downloadId) }
+        if (!installerLaunched) runCatching { manager.remove(downloadId) }
         throw cancelled
     } catch (error: Exception) {
-        runCatching { manager.remove(downloadId) }
+        if (!installerLaunched) runCatching { manager.remove(downloadId) }
         throw error
-    }
-    withContext(Dispatchers.Main) {
-        onStatus("Download complete. Waiting for installation approval…")
-        val installIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(apkUri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        context.startActivity(installIntent)
     }
 }
 
