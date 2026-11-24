@@ -1,6 +1,6 @@
 # Bloom TV OS Lite build status
 
-Last verified: 2026-11-23
+Last verified: 2026-11-24
 
 - GitHub Actions run #109 succeeded on workflow commit `a08e93d7`: unit tests, `:app:assembleDebug`, APK artifact upload and preview release publishing all passed. Preview release v0.1.109 is published and is the latest release.
 - Run #108 succeeded on code commit `218f5faf`: unit tests, debug APK build, artifact upload and preview-release publishing passed.
@@ -14,3 +14,18 @@ Last verified: 2026-11-23
 The updater downloads a release APK and hands it to Android's package installer for user approval. It is not an OTA or firmware updater, and the installation flow has not been verified on hardware.
 
 PR #1 remains open and diverged from `main`; GitHub reports merge conflicts. No merge or rebase was performed.
+
+## 2026-11-24 — Launcher, update hand-off and workflow reliability
+
+- App tiles now load the icon for the exact discovered launcher activity, falling back to the application icon when that activity has no icon. Icon state is keyed by package/activity so separate launch activities do not reuse the wrong image.
+- APK download cleanup now covers failures and cancellation through the Android installer hand-off, while retaining a completed APK once the installer has actually launched.
+- Focus requests use the cancellation-safe helper. Home now falls back to the Store focus target if its first app focus request cannot be made.
+- The release job receives the artifact ID directly from the build job and has explicit actions:read permission, avoiding a name-based artifact lookup race.
+- GitHub Actions run #115 passed unit tests, debug APK build, artifact upload and preview release publishing on code commit 1397ed74.
+- Run #116 passed unit tests, debug APK build, artifact upload and preview release publishing on workflow commit 3bc9ac19; preview v0.1.116 is verified as the latest release.
+- Run #117 on head a2fc15dc has passed unit tests; the debug APK build is still running at the time of this update.
+- Runs #110 and #111 passed tests/build/artifact upload but the release job could not resolve the artifact by name; the explicit artifact-ID hand-off addresses this. Runs #113 and #114 caught a Kotlin return-type mistake in the new focus helper; it was corrected before run #115.
+- Static source-contract checks for activity icons, installer cleanup, focus fallback and artifact-ID workflow wiring: 7/7 passed.
+- Local Android build: NOT RUN; no local Gradle installation or Android SDK is available. Physical Android TV / Google TV and emulator tests remain NOT RUN.
+
+PR #1 remains open. The branch is still diverged from main and GitHub reports conflicts; no merge or rebase was performed.
