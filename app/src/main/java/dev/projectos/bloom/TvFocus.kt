@@ -5,6 +5,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 
+/** Requests focus without treating a normal "not focused" result as success. */
+internal fun requestBloomFocus(focusRequester: FocusRequester): Boolean =
+    runBloomCancellable { focusRequester.requestFocus() }.getOrDefault(false)
+
 /**
  * Gives newly displayed TV screens a predictable first D-pad focus target.
  * The frame wait lets Compose attach the focus target before requesting focus.
@@ -15,6 +19,6 @@ internal fun RequestFocusOnEntry(focusRequester: FocusRequester) {
         withFrameNanos { }
         // Keep a detached focus target from crashing screen entry, but never
         // swallow CancellationException when this screen leaves composition.
-        runBloomCancellable { focusRequester.requestFocus() }
+        requestBloomFocus(focusRequester)
     }
 }
