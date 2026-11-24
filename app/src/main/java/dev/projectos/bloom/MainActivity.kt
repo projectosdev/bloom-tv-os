@@ -540,8 +540,8 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
             withFrameNanos { }
             if (!homeHasFocus) {
                 val focusedApp = installed.isNotEmpty() &&
-                    runCatching { homeFocusRequester.requestFocus() }.isSuccess
-                if (!focusedApp) runCatching { storeFocusRequester.requestFocus() }
+                    requestBloomFocus(homeFocusRequester)
+                if (!focusedApp) requestBloomFocus(storeFocusRequester)
             }
         }
     }
