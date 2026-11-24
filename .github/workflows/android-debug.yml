@@ -29,6 +29,8 @@ jobs:
   build-debug:
     name: Build Android debug APK
     runs-on: ubuntu-latest
+    outputs:
+      artifact-id: ${{ steps.upload-debug.outputs.artifact-id }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -51,6 +53,7 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug -PbloomVersionCode=${{ github.run_number }} -PbloomVersionName=0.1.${{ github.run_number }}
 
       - name: Upload debug APK
+        id: upload-debug
         uses: actions/upload-artifact@v4
         with:
           name: bloom-tv-os-debug
@@ -69,12 +72,13 @@ jobs:
       cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
     steps:
       - name: Download debug APK
         uses: actions/download-artifact@v4
         with:
-          name: bloom-tv-os-debug
+          artifact-ids: ${{ needs.build-debug.outputs.artifact-id }}
           path: dist
 
       - name: Publish Bloom release
