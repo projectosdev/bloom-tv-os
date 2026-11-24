@@ -1,11 +1,11 @@
 # Bloom TV OS Lite — Progress Log
 
-Last updated: 2026-11-23
+Last updated: 2026-11-24
 
 ## Current status
 
-**Stage:** Settings, launcher reliability, accessibility, focus, update-preview improvements, launcher-query correction and cancellation-safe update operations on PR #1.  
-**Build status:** GitHub Actions run #105 passed tests, debug APK build, artifact upload and preview release publishing on commit `31874834`. The cancellation-safety changes on `218f5faf` are awaiting CI.  
+**Stage:** Settings, launcher reliability, accessibility, cancellation-safe focus, activity-specific app icons and safer APK installer hand-off on PR #1.  
+**Build status:** GitHub Actions runs #115 and #116 passed unit tests, debug APK builds, artifact uploads and preview release publishing. Preview v0.1.116 is verified as latest; run #117 has passed tests and is building the APK.  
 **Device status:** No physical Android TV / Google TV or emulator test has been recorded.
 
 Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It is not replacement firmware or a complete standalone TV operating system.
@@ -81,3 +81,16 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Runs #106–#108 passed unit tests, debug APK builds, artifact uploads and preview-release publishing.
 - The code commit `218f5faf` passed run #108 after the cancellation-safe update changes.
 - The local Android build and physical TV/emulator tests remain NOT RUN because no Gradle/Android SDK or device is available.
+
+## 2026-11-24 — Launcher and update reliability
+
+- AppTile now requests the exact discovered activity icon, with an application-icon fallback; its asynchronous state is keyed by package/activity rather than package alone.
+- APK download cleanup now covers cancellation and failures until Android's installer activity has successfully launched. A completed APK is not removed after the installer hand-off succeeds.
+- Shared TV focus requests now preserve coroutine cancellation. The Home screen attempts its first app tile, then falls back to the Store action if that focus request cannot be made.
+- The preview-release workflow passes the upload-artifact ID as a job output and uses actions:read in the release job before downloading that exact artifact.
+- Run #115 passed tests, debug APK build, artifact upload and preview release v0.1.115 on commit 1397ed74.
+- Run #116 passed tests, debug APK build, artifact upload and preview release v0.1.116 on workflow commit 3bc9ac19. The explicit artifact-ID download succeeded.
+- Run #117 on current head a2fc15dc passed unit tests; APK build was still running when this entry was written.
+- Earlier run #110/#111 release steps failed to resolve an artifact by name even though upload had completed. Runs #113/#114 exposed a return-type mismatch in the new focus helper; the helper was corrected and run #115 passed.
+- Static source-contract checks: 7/7 passed. Local Android build remains NOT RUN because Gradle and the Android SDK are not installed in this environment. No emulator or physical TV test has been run.
+
