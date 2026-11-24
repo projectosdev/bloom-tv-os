@@ -1,6 +1,5 @@
 package dev.projectos.bloom
 
-import android.content.pm.PackageManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,7 +32,6 @@ fun BloomFeaturesPage(
     recentPackages: List<String>,
     accent: Color,
     onOpen: (TvApp) -> Unit,
-    onSystemSettings: () -> Unit,
     onStore: () -> Unit,
     onPrivacy: () -> Unit
 ) {
