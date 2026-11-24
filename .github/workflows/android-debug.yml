@@ -80,6 +80,7 @@ jobs:
         with:
           artifact-ids: ${{ needs.build-debug.outputs.artifact-id }}
           path: dist
+          merge-multiple: true
 
       - name: Publish Bloom release
         uses: softprops/action-gh-release@v2
