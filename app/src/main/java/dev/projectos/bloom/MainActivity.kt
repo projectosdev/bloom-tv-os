@@ -1,6 +1,8 @@
 package dev.projectos.bloom
 
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
+import android.content.pm.PackageManager
 import android.content.Intent
 import android.app.DownloadManager
 import android.os.Environment
@@ -1341,10 +1343,17 @@ private fun AppTile(
     launch: () -> Unit
 ) {
     val context = LocalContext.current
-    val appIcon by produceState<Bitmap?>(initialValue = null, key1 = app.packageName) {
+    val appIcon by produceState<Bitmap?>(initialValue = null, key1 = app.componentKey) {
         value = withContext(Dispatchers.IO) {
             try {
-                val drawable = context.packageManager.getApplicationIcon(app.packageName)
+                val packageManager = context.packageManager
+                val component = ComponentName(app.packageName, app.activityName)
+                val drawable = try {
+                    packageManager.getActivityIcon(component)
+                } catch (_: PackageManager.NameNotFoundException) {
+                    // Some launchers expose an activity without a dedicated icon.
+                    packageManager.getApplicationIcon(app.packageName)
+                }
                 Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888).also { bitmap ->
                     val canvas = Canvas(bitmap)
                     drawable.setBounds(0, 0, canvas.width, canvas.height)
@@ -1385,7 +1394,7 @@ private fun AppTile(
             appIcon?.let { icon ->
                 Image(
                     bitmap = icon.asImageBitmap(),
-                    contentDescription = "${app.title} app icon",
+                    contentDescription = null,
                     modifier = Modifier.size(if (compact) 38.dp else 48.dp)
                 )
             } ?: Box(
