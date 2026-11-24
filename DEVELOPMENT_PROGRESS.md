@@ -28,3 +28,13 @@ Last updated: 2026-11-15
 4. Integrate the fuller settings, app discovery, profile and software-update work without losing the new visual direction.
 5. Test D-pad navigation, Back behaviour and installation on actual target hardware.
 6. Implement device reboot only where supported by platform privileges; a normal launcher cannot reboot the whole device.
+
+
+## 2026-11-24 — Bloom feature hub increment
+
+- Added a Features destination to the TV launcher navigation.
+- Added Bloom Features hub with local installed-app search, persisted recent-app shortcuts, and status cards for the planned Bloom services.
+- Added Store and Privacy Centre shortcuts to supported Android intents.
+- Clearly labelled cloud, AI, security-scanning, certificate and companion features that are not connected or implemented yet.
+- Android build run 45431414615 was pending at the time of this update; do not treat the change as build-verified until CI completes.
+- No physical TV hardware test has been performed.
