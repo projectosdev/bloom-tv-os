@@ -43,10 +43,10 @@ import java.util.Date
 import java.util.Locale
 
 private val Night = Color(0xFF080B12)
-private val Panel = Color(0xFF151A25)
+val Panel = Color(0xFF151A25)
 private val PanelRaised = Color(0xFF202638)
-private val Muted = Color(0xFFAAB2C1)
-private val Hairline = Color.White.copy(alpha = 0.10f)
+val Muted = Color(0xFFAAB2C1)
+val Hairline = Color.White.copy(alpha = 0.10f)
 private val Accent = Color(0xFFE8B7CF)
 private const val PREFS = "bloom_preferences"
 private const val VERSION_NAME = "0.2.0"
