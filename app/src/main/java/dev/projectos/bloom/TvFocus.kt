@@ -5,7 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 
-/** Requests focus without treating a normal "not focused" result as success. */
+/** Requests focus and reports whether the request completed without throwing. */
 internal fun requestBloomFocus(focusRequester: FocusRequester): Boolean =
     runBloomCancellable { focusRequester.requestFocus() }.isSuccess
 
