@@ -60,14 +60,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class TvApp(
+data class TvApp(
     val title: String,
     val packageName: String,
     val activityName: String,
     val isFavourite: Boolean = false
 )
 
-private enum class BloomPage { HOME, APPS, SETTINGS, DISCOVER, UPDATES }
+private enum class BloomPage { HOME, APPS, SETTINGS, DISCOVER, FEATURES, UPDATES }
 
 @Composable
 private fun BloomRoot() {
@@ -82,6 +82,7 @@ private fun BloomRoot() {
     var search by remember { mutableStateOf("") }
     var onlyFavourites by remember { mutableStateOf(false) }
     var apps by remember { mutableStateOf(discoverApps(context.packageManager)) }
+    var recentPackages by remember { mutableStateOf(prefs.getString("recent_packages", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList()) }
     var favourites by remember { mutableStateOf(prefs.getStringSet("favourites", emptySet())?.toSet() ?: emptySet()) }
     var animations by remember { mutableStateOf(prefs.getBoolean("animations", true)) }
     var reduceMotion by remember { mutableStateOf(prefs.getBoolean("reduce_motion", false)) }
@@ -111,6 +112,8 @@ private fun BloomRoot() {
                     .setComponent(ComponentName(app.packageName, app.activityName))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
+            recentPackages = (listOf(app.packageName) + recentPackages.filterNot { it == app.packageName }).take(8)
+            prefs.edit().putString("recent_packages", recentPackages.joinToString("|")).apply()
         }
     }
     fun toggleFavourite(app: TvApp) {
@@ -189,6 +192,19 @@ private fun BloomRoot() {
                     onUpdates = { page = BloomPage.UPDATES },
                     onAbout = { showAbout = true },
                     accent = activeAccent
+                )
+                BloomPage.FEATURES -> BloomFeaturesPage(
+                    apps = apps,
+                    recentPackages = recentPackages,
+                    accent = activeAccent,
+                    onOpen = ::openApp,
+                    onStore = {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=apps"))) }
+                            .onFailure { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps"))) } }
+                    },
+                    onPrivacy = {
+                        runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:dev.projectos.bloom"))) }
+                    }
                 )
                 BloomPage.DISCOVER -> DiscoverPage(
                     apps = apps,
@@ -307,6 +323,7 @@ private fun BloomTopBar(
             PageNav("Home", page == BloomPage.HOME, accent, { onNavigate(BloomPage.HOME) })
             PageNav("Apps", page == BloomPage.APPS, accent, { onNavigate(BloomPage.APPS) })
             PageNav("Discover", page == BloomPage.DISCOVER, accent, { onNavigate(BloomPage.DISCOVER) })
+            PageNav("Features", page == BloomPage.FEATURES, accent, { onNavigate(BloomPage.FEATURES) })
             PageNav("Settings", page == BloomPage.SETTINGS || page == BloomPage.UPDATES, accent, { onNavigate(BloomPage.SETTINGS) })
         }
         Spacer(Modifier.width(17.dp))
