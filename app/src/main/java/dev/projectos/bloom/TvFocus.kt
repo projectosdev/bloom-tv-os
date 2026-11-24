@@ -7,7 +7,7 @@ import androidx.compose.ui.focus.FocusRequester
 
 /** Requests focus without treating a normal "not focused" result as success. */
 internal fun requestBloomFocus(focusRequester: FocusRequester): Boolean =
-    runBloomCancellable { focusRequester.requestFocus() }.getOrDefault(false)
+    runBloomCancellable { focusRequester.requestFocus() }.isSuccess
 
 /**
  * Gives newly displayed TV screens a predictable first D-pad focus target.
