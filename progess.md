@@ -5,7 +5,7 @@ Last updated: 2026-11-24
 ## Current status
 
 **Stage:** Settings, launcher reliability, accessibility, cancellation-safe focus, activity-specific app icons and safer APK installer hand-off on PR #1.  
-**Build status:** GitHub Actions runs #115 and #116 passed unit tests, debug APK builds, artifact uploads and preview release publishing. Preview v0.1.116 is verified as latest; run #117 has passed tests and is building the APK.  
+**Build status:** GitHub Actions runs #115–#118 passed unit tests, debug APK builds, artifact uploads and preview release publishing. Preview v0.1.118 is verified as latest and contains app-debug.apk.  
 **Device status:** No physical Android TV / Google TV or emulator test has been recorded.
 
 Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It is not replacement firmware or a complete standalone TV operating system.
@@ -89,8 +89,8 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Shared TV focus requests now preserve coroutine cancellation. The Home screen attempts its first app tile, then falls back to the Store action if that focus request cannot be made.
 - The preview-release workflow passes the upload-artifact ID as a job output and uses actions:read in the release job before downloading that exact artifact.
 - Run #115 passed tests, debug APK build, artifact upload and preview release v0.1.115 on commit 1397ed74.
-- Run #116 passed tests, debug APK build, artifact upload and preview release v0.1.116 on workflow commit 3bc9ac19. The explicit artifact-ID download succeeded.
-- Run #117 on current head a2fc15dc passed unit tests; APK build was still running when this entry was written.
+- Run #116 passed tests/build/artifact upload and completed the release job, but v0.1.116 had no APK asset because the artifact was extracted into a nested directory. Run #117 had the same asset-path issue.
+- Run #118 passed unit tests, debug APK build, artifact upload, artifact-ID download and release publishing. Preview v0.1.118 contains app-debug.apk (16,604,362 bytes; SHA-256 2e212ddd3496ad98baa41048c2a8ad2c780f322c533cfe72c271e3b8d7137f6c).
 - Earlier run #110/#111 release steps failed to resolve an artifact by name even though upload had completed. Runs #113/#114 exposed a return-type mismatch in the new focus helper; the helper was corrected and run #115 passed.
-- Static source-contract checks: 7/7 passed. Local Android build remains NOT RUN because Gradle and the Android SDK are not installed in this environment. No emulator or physical TV test has been run.
+- Static source-contract checks: 9/9 passed. Local Android build remains NOT RUN because Gradle and the Android SDK are not installed in this environment. No emulator or physical TV test has been run.
 
