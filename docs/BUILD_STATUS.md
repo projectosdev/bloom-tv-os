@@ -22,10 +22,11 @@ PR #1 remains open and diverged from `main`; GitHub reports merge conflicts. No 
 - Focus requests use the cancellation-safe helper. Home now falls back to the Store focus target if its first app focus request cannot be made.
 - The release job receives the artifact ID directly from the build job and has explicit actions:read permission, avoiding a name-based artifact lookup race.
 - GitHub Actions run #115 passed unit tests, debug APK build, artifact upload and preview release publishing on code commit 1397ed74.
-- Run #116 passed unit tests, debug APK build, artifact upload and preview release publishing on workflow commit 3bc9ac19; preview v0.1.116 is verified as the latest release.
-- Run #117 on head a2fc15dc has passed unit tests; the debug APK build is still running at the time of this update.
-- Runs #110 and #111 passed tests/build/artifact upload but the release job could not resolve the artifact by name; the explicit artifact-ID hand-off addresses this. Runs #113 and #114 caught a Kotlin return-type mistake in the new focus helper; it was corrected before run #115.
-- Static source-contract checks for activity icons, installer cleanup, focus fallback and artifact-ID workflow wiring: 7/7 passed.
+- Run #116 passed unit tests, debug APK build, artifact upload and release-job execution on workflow commit 3bc9ac19. Run #117 also passed tests, debug APK build, artifact upload and release-job execution on code/documentation head a2fc15dc.
+- The v0.1.116 and v0.1.117 release records initially had no APK asset: downloading by artifact ID placed the APK in a nested artifact directory, so the dist/*.apk upload glob matched nothing. Workflow run #118 passed after adding merge-multiple: true; it uploaded app-debug.apk to preview release v0.1.118.
+- Preview release v0.1.118 is verified as latest and contains app-debug.apk (16,604,362 bytes; SHA-256 2e212ddd3496ad98baa41048c2a8ad2c780f322c533cfe72c271e3b8d7137f6c).
+- Runs #110 and #111 passed tests/build/artifact upload but the release job could not resolve the artifact by name; explicit artifact-ID hand-off fixed that lookup. Runs #113 and #114 caught a Kotlin return-type mistake in the new focus helper; it was corrected before run #115.
+- Static source-contract checks for activity icons, installer cleanup, focus fallback, artifact-ID wiring and APK flattening: 9/9 passed.
 - Local Android build: NOT RUN; no local Gradle installation or Android SDK is available. Physical Android TV / Google TV and emulator tests remain NOT RUN.
 
 PR #1 remains open. The branch is still diverged from main and GitHub reports conflicts; no merge or rebase was performed.
