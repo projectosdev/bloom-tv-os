@@ -25,8 +25,15 @@ PR #1 remains open and diverged from `main`; GitHub reports merge conflicts. No 
 - Run #116 passed unit tests, debug APK build, artifact upload and release-job execution on workflow commit 3bc9ac19. Run #117 also passed tests, debug APK build, artifact upload and release-job execution on code/documentation head a2fc15dc.
 - The v0.1.116 and v0.1.117 release records initially had no APK asset: downloading by artifact ID placed the APK in a nested artifact directory, so the dist/*.apk upload glob matched nothing. Workflow run #118 passed after adding merge-multiple: true; it uploaded app-debug.apk to preview release v0.1.118.
 - Preview release v0.1.118 is verified as latest and contains app-debug.apk (16,604,362 bytes; SHA-256 2e212ddd3496ad98baa41048c2a8ad2c780f322c533cfe72c271e3b8d7137f6c).
-- Runs #110 and #111 passed tests/build/artifact upload but the release job could not resolve the artifact by name; explicit artifact-ID hand-off fixed that lookup. Runs #113 and #114 caught a Kotlin return-type mistake in the new focus helper; it was corrected before run #115.
+- Runs #110 and #111 passed tests/build/artifact upload but the release job could not resolve the artifact by name; explicit artifact-ID hand-off fixed that lookup. Runs #113 and #114 caught a return-type mistake in the focus helper; it was corrected before run #115.
 - Static source-contract checks for activity icons, installer cleanup, focus fallback, artifact-ID wiring and APK flattening: 9/9 passed.
 - Local Android build: NOT RUN; no local Gradle installation or Android SDK is available. Physical Android TV / Google TV and emulator tests remain NOT RUN.
 
-PR #1 remains open. The branch is still diverged from main and GitHub reports conflicts; no merge or rebase was performed.
+## 2026-11-25 — TV focus request result correction
+
+- Found that `requestBloomFocus` used `Result.isSuccess`, which reports whether the call threw rather than whether `FocusRequester.requestFocus()` returned true. A normal `false` result was therefore incorrectly treated as granted focus, preventing the Home screen's Store fallback from running when the first app target declined focus.
+- Changed the helper to return the Boolean carried by the Result. Ordinary failures return false; `CancellationException` still propagates through `runBloomCancellable`.
+- Added unit tests for granted, declined and failed focus requests.
+- GitHub Actions validation for this commit: **PENDING**.
+- Local Android build: **NOT RUN**; no Gradle installation or Android SDK is available. Physical Android TV / Google TV and emulator tests remain NOT RUN.
+- PR #1 remains open, 104 commits ahead and 29 behind current `main`; GitHub reports merge conflicts. No merge, rebase or push to `main` was performed.
