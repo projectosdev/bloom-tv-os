@@ -1097,7 +1097,7 @@ private fun BloomBackButton(
             if (focused) BloomAccent.value else Color.White.copy(alpha = 0.15f)
         )
     ) {
-        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.ArrowBack, "Back", tint = Ink)
         }
     }
@@ -1804,7 +1804,7 @@ private fun ThemePickerRow(selectedIndex: Int, onSelect: (Int) -> Unit) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Surface(
                             onClick = { onSelect(index) },
-                            modifier = Modifier.size(30.dp).onFocusChanged { focused = it.isFocused }.semantics {
+                            modifier = Modifier.size(48.dp).onFocusChanged { focused = it.isFocused }.semantics {
                                 contentDescription = "${BloomThemeNames[index]} theme"
                                 selected = index == selectedIndex
                                 role = Role.RadioButton
@@ -1816,7 +1816,7 @@ private fun ThemePickerRow(selectedIndex: Int, onSelect: (Int) -> Unit) {
                                 if (focused || index == selectedIndex) Color.White else Color.White.copy(alpha = 0.3f)
                             )
                         ) {}
-                        Text(BloomThemeNames[index], color = Ink.copy(alpha = 0.55f), fontSize = 8.sp)
+                        Text(BloomThemeNames[index], color = Ink.copy(alpha = 0.55f), fontSize = 10.sp)
                     }
                 }
             }
@@ -1901,7 +1901,7 @@ private fun openBloomDeviceSettings(
 
 @Composable
 private fun SystemSettingButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, modifier = modifier.height(46.dp), contentPadding = PaddingValues(horizontal = 5.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))) {
+    OutlinedButton(onClick = onClick, modifier = modifier.height(48.dp), contentPadding = PaddingValues(horizontal = 5.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))) {
         Text(label, fontSize = 10.sp, maxLines = 1)
     }
 }

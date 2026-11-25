@@ -53,7 +53,7 @@ internal fun SystemInfoScreen(onBack: () -> Unit) {
                 shape = CircleShape,
                 border = BorderStroke(if (backFocused) 2.dp else 1.dp, if (backFocused) Color(0xFFB8C7FF) else Color.White.copy(alpha = 0.15f))
             ) {
-                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.ArrowBack, "Back", tint = Color(0xFFE9ECF6))
                 }
             }

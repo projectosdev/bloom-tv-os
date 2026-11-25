@@ -37,3 +37,10 @@ PR #1 remains open and diverged from `main`; GitHub reports merge conflicts. No 
 - GitHub Actions validation for this commit: **PENDING**.
 - Local Android build: **NOT RUN**; no Gradle installation or Android SDK is available. Physical Android TV / Google TV and emulator tests remain NOT RUN.
 - PR #1 remains open, 104 commits ahead and 29 behind current `main`; GitHub reports merge conflicts. No merge, rebase or push to `main` was performed.
+
+
+## 2026-11-25 — TV focus target sizing
+
+- Increased the shared Bloom Back button and About-screen Back button to 48 dp, raised device-settings action buttons to 48 dp, and enlarged theme swatches to 48 dp with more legible labels.
+- These changes give remote/touch accessibility targets a more forgiving minimum size while retaining the existing focus border and selected-state semantics.
+- GitHub Actions validation for the latest code commit: **PENDING**.

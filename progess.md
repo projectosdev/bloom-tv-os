@@ -98,3 +98,10 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Added `TvFocusTest.kt` for granted, declined and failed focus requests.
 - GitHub Actions validation for the current code commit: **PENDING**.
 - Local Android build and TV device/emulator tests remain NOT RUN because this environment has no Gradle/Android SDK or test device.
+
+
+## 2026-11-25 — TV focus target sizing
+
+- Increased the shared Bloom Back button and About-screen Back button to 48 dp, device-settings action buttons to 48 dp, and theme swatches to 48 dp with larger labels.
+- Kept the existing D-pad focus borders and theme radio-button selected semantics.
+- GitHub Actions validation for the latest code commit: **PENDING**.
