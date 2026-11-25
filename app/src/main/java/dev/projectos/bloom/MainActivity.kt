@@ -539,9 +539,13 @@ private fun LauncherScreen(onMotionAllowedChange: (Boolean) -> Unit) {
         if (homeVisible && !homeHasFocus && !appDiscoveryLoading) {
             withFrameNanos { }
             if (!homeHasFocus) {
-                val focusedApp = installed.isNotEmpty() &&
+                if (installed.isNotEmpty()) {
                     requestBloomFocus(homeFocusRequester)
-                if (!focusedApp) requestBloomFocus(storeFocusRequester)
+                    // requestFocus() is Unit in this pinned Compose version, so
+                    // observe the actual focus state before choosing the fallback.
+                    withFrameNanos { }
+                }
+                if (!homeHasFocus) requestBloomFocus(storeFocusRequester)
             }
         }
     }

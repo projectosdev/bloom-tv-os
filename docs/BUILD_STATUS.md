@@ -29,18 +29,12 @@ PR #1 remains open and diverged from `main`; GitHub reports merge conflicts. No 
 - Static source-contract checks for activity icons, installer cleanup, focus fallback, artifact-ID wiring and APK flattening: 9/9 passed.
 - Local Android build: NOT RUN; no local Gradle installation or Android SDK is available. Physical Android TV / Google TV and emulator tests remain NOT RUN.
 
-## 2026-11-25 — TV focus request result correction
+## 2026-11-25 — Home focus fallback and accessible targets
 
-- Found that `requestBloomFocus` used `Result.isSuccess`, which reports whether the call threw rather than whether `FocusRequester.requestFocus()` returned true. A normal `false` result was therefore incorrectly treated as granted focus, preventing the Home screen's Store fallback from running when the first app target declined focus.
-- Changed the helper to return the Boolean carried by the Result. Ordinary failures return false; `CancellationException` still propagates through `runBloomCancellable`.
-- Added unit tests for granted, declined and failed focus requests.
-- GitHub Actions run #119 failed at Kotlin compilation because the generic result type was not inferred at the focus helper call. The call now explicitly specifies `Boolean`; run #121 is validating the correction.
-- Local Android build: **NOT RUN**; no Gradle installation or Android SDK is available. Physical Android TV / Google TV and emulator tests remain NOT RUN.
-- PR #1 remains open, 104 commits ahead and 29 behind current `main`; GitHub reports merge conflicts. No merge, rebase or push to `main` was performed.
-
-
-## 2026-11-25 — TV focus target sizing
-
-- Increased the shared Bloom Back button and About-screen Back button to 48 dp, raised device-settings action buttons to 48 dp, and enlarged theme swatches to 48 dp with more legible labels.
-- These changes give remote/touch accessibility targets a more forgiving minimum size while retaining the existing focus border and selected-state semantics.
-- GitHub Actions validation for the latest code commit: **PENDING**.
+- The pinned Compose BOM (`2024.12.01`) exposes `FocusRequester.requestFocus()` as a Unit-returning API. The attempted Boolean-based helper and its tests did not compile; the original cancellation-safe dispatch helper was restored.
+- Home now waits one frame after requesting the first app tile and checks the observed `homeHasFocus` state before deciding whether to move focus to Store. It no longer treats a completed request call as proof that the app tile received focus.
+- Increased the shared Bloom Back button and About-screen Back button to 48 dp, device-settings actions to 48 dp, and theme swatches to 48 dp with larger labels.
+- Runs #119–#121 failed during Kotlin compilation while validating the incorrect Boolean assumption. Run #122 is validating the corrected focus observation and accessible target sizes.
+- Last successful full workflow remains run #118, which passed unit tests, debug APK build, artifact upload and preview release publishing. Preview v0.1.118 contains `app-debug.apk`.
+- Local Android build: **NOT RUN**; no Gradle installation or Android SDK is available in this environment. Physical Android TV / Google TV and emulator tests remain NOT RUN.
+- PR #1 remains open, 107 commits ahead and 29 behind current `main`; GitHub reports merge conflicts. No merge, rebase or push to `main` was performed.

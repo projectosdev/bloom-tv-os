@@ -5,17 +5,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 
-/**
- * Returns true only when Compose actually grants the focus request.
- *
- * A completed call can still return false when the target is not eligible for focus.
- * Ordinary failures return false, while coroutine cancellation continues to propagate.
- */
-internal fun focusRequestWasGranted(result: Result<Boolean>): Boolean =
-    result.getOrDefault(false)
-
+/** Requests focus and reports whether the request completed without throwing. */
 internal fun requestBloomFocus(focusRequester: FocusRequester): Boolean =
-    focusRequestWasGranted(runBloomCancellable<Boolean> { focusRequester.requestFocus() })
+    runBloomCancellable { focusRequester.requestFocus() }.isSuccess
 
 /**
  * Gives newly displayed TV screens a predictable first D-pad focus target.

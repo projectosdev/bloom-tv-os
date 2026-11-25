@@ -91,17 +91,10 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Earlier run #110/#111 release steps failed to resolve an artifact by name even though upload had completed; explicit artifact-ID hand-off fixed that. Runs #113/#114 exposed a return-type mismatch in the focus helper; it was corrected before run #115.
 - Static source-contract checks: **9/9 passed**. Local Android build remains NOT RUN because Gradle and the Android SDK are not installed in this environment. No emulator or physical TV test has been run.
 
-## 2026-11-25 — TV focus request result correction
+## 2026-11-25 — Home focus fallback and accessible targets
 
-- Found a correctness bug in `requestBloomFocus`: `Result.isSuccess` treats `Result.success(false)` as a successful focus request. Compose can return false without throwing when the target cannot accept focus, so Home's Store fallback could be skipped.
-- Changed the helper to inspect the returned Boolean. It now reports true only when Compose grants focus; ordinary failures return false, and cancellation still propagates.
-- Added `TvFocusTest.kt` for granted, declined and failed focus requests.
-- Run #119 exposed a Kotlin type-inference error in the focus helper call; the `runBloomCancellable<Boolean>` type argument is now explicit. Run #121 is validating the correction.
-- Local Android build and TV device/emulator tests remain NOT RUN because this environment has no Gradle/Android SDK or test device.
-
-
-## 2026-11-25 — TV focus target sizing
-
-- Increased the shared Bloom Back button and About-screen Back button to 48 dp, device-settings action buttons to 48 dp, and theme swatches to 48 dp with larger labels.
-- Kept the existing D-pad focus borders and theme radio-button selected semantics.
-- Run #119 exposed a Kotlin type-inference error in the focus helper call; the `runBloomCancellable<Boolean>` type argument is now explicit. Run #121 is validating the correction.
+- The pinned Compose BOM (`2024.12.01`) exposes `FocusRequester.requestFocus()` as a Unit-returning API. The attempted Boolean-based helper and its tests did not compile, so the original cancellation-safe request-dispatch helper was restored.
+- Home now waits one frame after requesting the first app tile and checks the observed `homeHasFocus` state before deciding whether to focus Store. This verifies the focus state rather than assuming that a non-throwing request actually moved focus.
+- Increased the shared Bloom Back button and About-screen Back button to 48 dp, device-settings actions to 48 dp, and theme swatches to 48 dp with larger labels.
+- Runs #119–#121 failed during Kotlin compilation while validating the incorrect Boolean assumption. Run #122 is validating the corrected implementation.
+- Last successful full workflow remains run #118. Local Android build and TV device/emulator tests remain NOT RUN because this environment has no Gradle/Android SDK or test device.
