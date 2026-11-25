@@ -5,7 +5,7 @@ Last updated: 2026-11-25
 ## Current status
 
 **Stage:** Settings, launcher reliability, accessibility, cancellation-safe focus, activity-specific app icons and safer APK installer hand-off on PR #1.  
-**Build status:** GitHub Actions runs #115–#118 passed unit tests, debug APK builds, artifact uploads and preview release publishing. Preview v0.1.118 is verified as latest and contains app-debug.apk.  
+**Build status:** GitHub Actions run #122 passed unit tests, debug APK build, artifact upload and preview release publishing. Preview v0.1.122 is latest and contains app-debug.apk.  
 **Device status:** No physical Android TV / Google TV or emulator test has been recorded.
 
 Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It is not replacement firmware or a complete standalone TV operating system.
@@ -33,8 +33,8 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 
 ## Validation
 
-- GitHub Actions run #118: **SUCCESS** on workflow commit `e1ed22d0`. Unit tests, debug APK build, artifact upload, artifact-ID download and preview release publishing passed. Preview v0.1.118 contains `app-debug.apk`.
-- Runs #115–#117: unit tests and debug APK builds passed; #116 and #117 exposed the nested artifact-path issue that was fixed in #118.
+- GitHub Actions run #122: **SUCCESS** on code commit `7ade19b9`. Unit tests, debug APK build, artifact upload, artifact-ID download and preview release publishing passed. Preview v0.1.122 contains `app-debug.apk` (16,604,369 bytes; SHA-256 `e773dead98c1ceb7c1f12d2ce8b264b8ccc01de1d716790e8da593925524465c`).
+- Runs #115–#118: unit tests and debug APK builds passed; #116 and #117 exposed the nested artifact-path issue that was fixed in #118. Run #122 is the latest successful validation.
 - Static source-contract checks: **9/9 passed**. Earlier standalone Kotlin checks covered cancellation, profile sorting, version comparison, trusted release URLs, app sorting and update status.
 - Local Android build: **NOT RUN**, because this environment has no Gradle installation or Android SDK.
 - No Android TV emulator or physical-device test has been run.
@@ -93,8 +93,9 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 
 ## 2026-11-25 — Home focus fallback and accessible targets
 
-- The pinned Compose BOM (`2024.12.01`) exposes `FocusRequester.requestFocus()` as a Unit-returning API. The attempted Boolean-based helper and its tests did not compile, so the original cancellation-safe request-dispatch helper was restored.
+- The pinned Compose BOM (`2024.12.01`) exposes `FocusRequester.requestFocus()` as a Unit-returning API. The attempted Boolean-based helper was reverted; the original cancellation-safe request-dispatch helper remains.
 - Home now waits one frame after requesting the first app tile and checks the observed `homeHasFocus` state before deciding whether to focus Store. This verifies the focus state rather than assuming that a non-throwing request actually moved focus.
 - Increased the shared Bloom Back button and About-screen Back button to 48 dp, device-settings actions to 48 dp, and theme swatches to 48 dp with larger labels.
-- Runs #119–#121 failed during Kotlin compilation while validating the incorrect Boolean assumption. Run #122 is validating the corrected implementation.
-- Last successful full workflow remains run #118. Local Android build and TV device/emulator tests remain NOT RUN because this environment has no Gradle/Android SDK or test device.
+- Runs #119–#121 failed during Kotlin compilation while validating the incorrect Boolean assumption. Run #122 passed unit tests, debug APK build, artifact upload and preview release publishing.
+- Preview v0.1.122 is latest and contains `app-debug.apk` (16,604,369 bytes; SHA-256 `e773dead98c1ceb7c1f12d2ce8b264b8ccc01de1d716790e8da593925524465c`).
+- Local Android build and TV device/emulator tests remain NOT RUN because this environment has no Gradle/Android SDK or test device.

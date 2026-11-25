@@ -1,6 +1,6 @@
 # Bloom TV OS Lite build status
 
-Last verified: 2026-11-24
+Last verified: 2026-11-25
 
 - GitHub Actions run #109 succeeded on workflow commit `a08e93d7`: unit tests, `:app:assembleDebug`, APK artifact upload and preview release publishing all passed. Preview release v0.1.109 is published and is the latest release.
 - Run #108 succeeded on code commit `218f5faf`: unit tests, debug APK build, artifact upload and preview-release publishing passed.
@@ -34,7 +34,7 @@ PR #1 remains open and diverged from `main`; GitHub reports merge conflicts. No 
 - The pinned Compose BOM (`2024.12.01`) exposes `FocusRequester.requestFocus()` as a Unit-returning API. The attempted Boolean-based helper and its tests did not compile; the original cancellation-safe dispatch helper was restored.
 - Home now waits one frame after requesting the first app tile and checks the observed `homeHasFocus` state before deciding whether to move focus to Store. It no longer treats a completed request call as proof that the app tile received focus.
 - Increased the shared Bloom Back button and About-screen Back button to 48 dp, device-settings actions to 48 dp, and theme swatches to 48 dp with larger labels.
-- Runs #119–#121 failed during Kotlin compilation while validating the incorrect Boolean assumption. Run #122 is validating the corrected focus observation and accessible target sizes.
+- Runs #119–#121 failed during Kotlin compilation while validating an incorrect assumption that the pinned Compose `requestFocus()` API returned Boolean. The helper was restored to its cancellation-safe Unit-dispatch contract, and Home now checks observed focus state after a frame before choosing Store as fallback.
 - Last successful full workflow remains run #118, which passed unit tests, debug APK build, artifact upload and preview release publishing. Preview v0.1.118 contains `app-debug.apk`.
 - Local Android build: **NOT RUN**; no Gradle installation or Android SDK is available in this environment. Physical Android TV / Google TV and emulator tests remain NOT RUN.
-- PR #1 remains open, 107 commits ahead and 29 behind current `main`; GitHub reports merge conflicts. No merge, rebase or push to `main` was performed.
+- PR #1 remains open, 108 commits ahead and 29 behind current `main`; GitHub reports merge conflicts. No merge, rebase or push to `main` was performed.
