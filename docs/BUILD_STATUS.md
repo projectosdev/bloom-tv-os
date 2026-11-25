@@ -37,4 +37,4 @@ PR #1 remains open and diverged from `main`; GitHub reports merge conflicts. No 
 - Runs #119–#121 failed during Kotlin compilation while validating an incorrect assumption that the pinned Compose `requestFocus()` API returned Boolean. The helper was restored to its cancellation-safe Unit-dispatch contract, and Home now checks observed focus state after a frame before choosing Store as fallback.
 - Last successful full workflow remains run #118, which passed unit tests, debug APK build, artifact upload and preview release publishing. Preview v0.1.118 contains `app-debug.apk`.
 - Local Android build: **NOT RUN**; no Gradle installation or Android SDK is available in this environment. Physical Android TV / Google TV and emulator tests remain NOT RUN.
-- PR #1 remains open, 108 commits ahead and 29 behind current `main`; GitHub reports merge conflicts. No merge, rebase or push to `main` was performed.
+- PR #1 remains open and 29 commits behind current `main`; GitHub reports merge conflicts. No merge, rebase or push to `main` was performed.
