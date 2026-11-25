@@ -96,7 +96,7 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 - Found a correctness bug in `requestBloomFocus`: `Result.isSuccess` treats `Result.success(false)` as a successful focus request. Compose can return false without throwing when the target cannot accept focus, so Home's Store fallback could be skipped.
 - Changed the helper to inspect the returned Boolean. It now reports true only when Compose grants focus; ordinary failures return false, and cancellation still propagates.
 - Added `TvFocusTest.kt` for granted, declined and failed focus requests.
-- GitHub Actions validation for the current code commit: **PENDING**.
+- Run #119 exposed a Kotlin type-inference error in the focus helper call; the `runBloomCancellable<Boolean>` type argument is now explicit. Run #121 is validating the correction.
 - Local Android build and TV device/emulator tests remain NOT RUN because this environment has no Gradle/Android SDK or test device.
 
 
@@ -104,4 +104,4 @@ Bloom is a TV-first Android launcher built with Kotlin and Jetpack Compose. It i
 
 - Increased the shared Bloom Back button and About-screen Back button to 48 dp, device-settings action buttons to 48 dp, and theme swatches to 48 dp with larger labels.
 - Kept the existing D-pad focus borders and theme radio-button selected semantics.
-- GitHub Actions validation for the latest code commit: **PENDING**.
+- Run #119 exposed a Kotlin type-inference error in the focus helper call; the `runBloomCancellable<Boolean>` type argument is now explicit. Run #121 is validating the correction.

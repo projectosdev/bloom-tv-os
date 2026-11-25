@@ -34,7 +34,7 @@ PR #1 remains open and diverged from `main`; GitHub reports merge conflicts. No 
 - Found that `requestBloomFocus` used `Result.isSuccess`, which reports whether the call threw rather than whether `FocusRequester.requestFocus()` returned true. A normal `false` result was therefore incorrectly treated as granted focus, preventing the Home screen's Store fallback from running when the first app target declined focus.
 - Changed the helper to return the Boolean carried by the Result. Ordinary failures return false; `CancellationException` still propagates through `runBloomCancellable`.
 - Added unit tests for granted, declined and failed focus requests.
-- GitHub Actions validation for this commit: **PENDING**.
+- GitHub Actions run #119 failed at Kotlin compilation because the generic result type was not inferred at the focus helper call. The call now explicitly specifies `Boolean`; run #121 is validating the correction.
 - Local Android build: **NOT RUN**; no Gradle installation or Android SDK is available. Physical Android TV / Google TV and emulator tests remain NOT RUN.
 - PR #1 remains open, 104 commits ahead and 29 behind current `main`; GitHub reports merge conflicts. No merge, rebase or push to `main` was performed.
 

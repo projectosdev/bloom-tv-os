@@ -15,7 +15,7 @@ internal fun focusRequestWasGranted(result: Result<Boolean>): Boolean =
     result.getOrDefault(false)
 
 internal fun requestBloomFocus(focusRequester: FocusRequester): Boolean =
-    focusRequestWasGranted(runBloomCancellable { focusRequester.requestFocus() })
+    focusRequestWasGranted(runBloomCancellable<Boolean> { focusRequester.requestFocus() })
 
 /**
  * Gives newly displayed TV screens a predictable first D-pad focus target.
